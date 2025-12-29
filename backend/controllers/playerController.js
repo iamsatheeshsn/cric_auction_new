@@ -73,6 +73,9 @@ exports.getPlayersByAuction = async (req, res) => {
             subQuery: false // Safe for BelongsTo association to ensure correct ordering
         });
 
+
+
+
         res.json({
             totalItems: count,
             totalPages: Math.ceil(count / limit),

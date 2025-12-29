@@ -143,6 +143,14 @@ const BroadcastView = () => {
                         <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded uppercase">CRR: {(score?.runs / Math.max(0.1, score?.overs || 0)).toFixed(2)}</span>
                         {target && <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded uppercase">RRR: {((target - score?.runs) / Math.max(0.1, (fixture.total_overs || 20) - (score?.overs || 0))).toFixed(2)}</span>}
                     </div>
+
+                    {/* Win Prob Small */}
+                    {matchData?.winProbability && (
+                        <div className="mt-2 w-32 h-2 bg-gray-200 rounded-full overflow-hidden flex">
+                            <div className="h-full bg-blue-600" style={{ width: `${matchData.winProbability.team1}%` }}></div>
+                            <div className="h-full bg-orange-500" style={{ width: `${matchData.winProbability.team2}%` }}></div>
+                        </div>
+                    )}
                 </div>
             </div>
 

@@ -495,6 +495,9 @@ const AuctionRoom = () => {
 
                                         {/* Bidding Controls */}
                                         <div className="flex-1 flex flex-col justify-center gap-8 py-4">
+
+
+
                                             <div className="bg-gradient-to-br from-slate-50 to-white p-8 rounded-3xl border border-slate-100 shadow-lg relative overflow-hidden">
                                                 <div className="absolute top-0 right-0 p-4 opacity-5"><FiDollarSign size={120} /></div>
                                                 <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2 relative z-10">Current Bid Amount</p>

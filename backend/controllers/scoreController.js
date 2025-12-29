@@ -50,13 +50,61 @@ exports.getMatchScoringDetails = async (req, res) => {
         const score1 = calculateInningsScore(balls.filter(b => b.innings === 1));
         const score2 = calculateInningsScore(balls.filter(b => b.innings === 2));
 
-        // Logic to calculate exact overs not implemented fully here (needs legal ball count)
-        // For now just returning raw balls
+        // Win Probability Logic (Basic WASP-lite)
+        let winProbability = { team1: 50, team2: 50 };
+
+        // Only calculate if match is Live/Completed AND we are in the 2nd innings (or 1st innings is done)
+        // Simplest check: Do we have any balls in innings 2? OR is the match completed?
+        const isSecondInningsStarted = balls.some(b => b.innings === 2);
+
+        if ((fixture.status === 'Live' && isSecondInningsStarted) || fixture.status === 'Completed') {
+            const innings1Runs = score1.runs;
+            const target = innings1Runs + 1;
+            const currentRuns = score2.runs;
+            const wicketsLost = score2.wickets;
+            const totalOvers = fixture.total_overs || 20;
+
+            // Simplified Balls Remaining (approx)
+            // Ideally we iterate balls, but simplistic approach:
+            const legalBallsBowled = score2.legalBalls;
+            const ballsRemaining = (totalOvers * 6) - legalBallsBowled;
+
+            const runsNeeded = target - currentRuns;
+
+            if (ballsRemaining <= 0) {
+                // Match Over
+                winProbability = runsNeeded <= 0 ? { team1: 0, team2: 100 } : { team1: 100, team2: 0 };
+            } else if (runsNeeded <= 0) {
+                winProbability = { team1: 0, team2: 100 };
+            } else {
+                // Heuristic Model
+                const rrr = runsNeeded / (ballsRemaining / 6);
+                let winP = 50; // Base
+
+                // Adjust based on RRR
+                if (rrr > 12) winP = 10;
+                else if (rrr > 10) winP = 20;
+                else if (rrr > 8) winP = 35;
+                else if (rrr > 6) winP = 60;
+                else if (rrr <= 6) winP = 80;
+
+                // Adjust for Wickets
+                if (wicketsLost >= 8) winP -= 30;
+                else if (wicketsLost >= 6) winP -= 15;
+
+                // Cap
+                winP = Math.max(0, Math.min(100, winP));
+
+                // If chasing
+                winProbability = { team1: 100 - winP, team2: winP };
+            }
+        }
 
         res.json({
             fixture,
             balls,
-            summary: { score1, score2 }
+            summary: { score1, score2 },
+            winProbability
         });
     } catch (error) {
         console.error(error);

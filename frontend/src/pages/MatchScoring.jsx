@@ -574,6 +574,25 @@ const MatchScoring = () => {
 
         const balls = allBalls.filter(b => b.innings === inn);
 
+        // Determine Batting Order based on appearance
+        const sortedBalls = [...balls].sort((a, b) => {
+            if (a.over_number !== b.over_number) return a.over_number - b.over_number;
+            return a.ball_number - b.ball_number;
+        });
+
+        const battingOrder = {};
+        let nextOrder = 1;
+        sortedBalls.forEach(b => {
+            // Check Striker
+            if (b.striker_id && !battingOrder[b.striker_id]) {
+                battingOrder[b.striker_id] = nextOrder++;
+            }
+            // Check Non-Striker (they are also "in")
+            if (b.non_striker_id && !battingOrder[b.non_striker_id]) {
+                battingOrder[b.non_striker_id] = nextOrder++;
+            }
+        });
+
         // Batting
         const batting = battingTeam.Players.map(p => {
             const played = balls.filter(b => b.striker_id === p.id);
@@ -614,8 +633,11 @@ const MatchScoring = () => {
                 status = 'not out';
             }
 
-            return { ...p, runs, bf, fours, sixes, sr, status };
-        }); // Return all players including DNB
+            // Assign order: if not in map, push to end
+            const order = battingOrder[p.id] || 9999;
+
+            return { ...p, runs, bf, fours, sixes, sr, status, order };
+        }).sort((a, b) => a.order - b.order); // Sort by calculated order
 
         // Bowling
         const activeBowlerIds = [...new Set(balls.map(b => b.bowler_id))];

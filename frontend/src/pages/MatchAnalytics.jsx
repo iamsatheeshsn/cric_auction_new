@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import api from '../api/axios';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, BarChart, Bar } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import WinProbability from '../components/WinProbability';
 
 const MatchAnalytics = () => {
     const { fixtureId } = useParams();
@@ -21,11 +22,16 @@ const MatchAnalytics = () => {
                 setLoading(false);
             }
         };
+
         fetchMatchAnalytics();
+        const interval = setInterval(fetchMatchAnalytics, 5000); // Poll every 5 seconds for live updates
+        return () => clearInterval(interval);
     }, [fixtureId]);
 
     if (loading) return <Layout><div className="flex justify-center p-12">Loading Match Analytics...</div></Layout>;
     if (!matchData) return <Layout><div className="flex justify-center p-12">Match data not found.</div></Layout>;
+
+    // ... existing logic ...
 
     // Prepare Worm Graph Data (Cumulative Runs)
     // Assuming backend gives us ball-by-ball or over-by-over. 
@@ -122,6 +128,12 @@ const MatchAnalytics = () => {
                 <h1 className="text-3xl font-black text-deep-blue dark:text-white uppercase">{matchData.fixture.Team1.name} vs {matchData.fixture.Team2.name}</h1>
                 <p className="text-gray-500 dark:text-gray-400 font-bold tracking-wider text-sm mt-1">MATCH ANALYTICS CENTER</p>
             </div>
+
+            <WinProbability
+                probability={matchData.winProbability}
+                team1={matchData.fixture.Team1?.short_name || matchData.fixture.Team1?.name}
+                team2={matchData.fixture.Team2?.short_name || matchData.fixture.Team2?.name}
+            />
 
             {/* Worm Graph */}
             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-white/10 mb-8">
