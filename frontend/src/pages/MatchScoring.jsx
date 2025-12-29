@@ -447,49 +447,64 @@ const MatchScoring = () => {
     };
 
     const calculateWinProbability = (fix, balls, summ) => {
-        if (!fix || fix.status !== 'Live' || fix.current_innings !== 2) return null;
+        if (!fix || fix.status !== 'Live' || parseInt(fix.current_innings) !== 2) return null;
+        if (!summ || !summ.score1 || !summ.score2) return null;
 
         const target = summ.score1.runs + 1;
         const currentRuns = summ.score2.runs;
         const wicketsLost = summ.score2.wickets;
-        const ballsBowled = balls.filter(b => b.innings === 2 && b.extra_type !== 'Wide' && b.extra_type !== 'NoBall').length;
+        const ballsBowled = balls.filter(b => parseInt(b.innings) === 2 && b.extra_type !== 'Wide' && b.extra_type !== 'NoBall').length;
         const totalBalls = (fix.total_overs || 20) * 6;
         const ballsRemaining = Math.max(0, totalBalls - ballsBowled);
         const runsNeeded = Math.max(0, target - currentRuns);
 
         // Chasing Team
-        const battingTeamId = (fix.toss_decision === 'Bat' && fix.toss_winner_id === fix.team1_id) ? fix.team2_id :
-            (fix.toss_decision === 'Bowl' && fix.toss_winner_id === fix.team1_id) ? fix.team1_id :
-                (fix.toss_decision === 'Bat' && fix.toss_winner_id === fix.team2_id) ? fix.team1_id : fix.team2_id;
+        // Use String comparison for IDs to be safe
+        const isTeam1TossWinner = String(fix.toss_winner_id) === String(fix.team1_id);
+        const tossDecision = fix.toss_decision;
 
-        const battingTeamName = battingTeamId === fix.Team1.id ? fix.Team1.name : fix.Team2.name;
+        let chasingTeamId;
+        if (tossDecision === 'Bat') {
+            chasingTeamId = isTeam1TossWinner ? fix.team2_id : fix.team1_id;
+        } else {
+            chasingTeamId = isTeam1TossWinner ? fix.team1_id : fix.team2_id;
+        }
 
-        // Simple Heuristic Algorithm
+        const isChasingTeam1 = String(chasingTeamId) === String(fix.team1_id);
+        const chasingTeamName = isChasingTeam1 ? fix.Team1.name : fix.Team2.name;
+        const defendingTeamName = isChasingTeam1 ? fix.Team2.name : fix.Team1.name;
+
+        // Simple Heuristic Algorithm (Calculates prob for Chasing Team)
         // 1. Base on RRR
         const rrr = ballsRemaining > 0 ? (runsNeeded / (ballsRemaining / 6)) : 99;
         let prob = 50;
 
-        if (runsNeeded <= 0) return { team: battingTeamName, percent: 100 };
-        if (ballsRemaining <= 0) return { team: battingTeamName, percent: 0 };
+        if (runsNeeded <= 0) return { team: chasingTeamName, percent: 100 };
+        if (ballsRemaining <= 0) return { team: defendingTeamName, percent: 100 };
 
         // RRR Factor
         if (rrr < 6) prob += 20;
         else if (rrr < 8) prob += 10;
-        else if (rrr > 12) prob -= 20;
-        else if (rrr > 10) prob -= 10;
+        else if (rrr > 12) prob -= 30;
+        else if (rrr > 10) prob -= 15;
 
         // Wickets Factor
         const wicketsLeft = 10 - wicketsLost;
         if (wicketsLeft >= 8) prob += 10;
-        else if (wicketsLeft <= 3) prob -= 20;
+        else if (wicketsLeft <= 3) prob -= 30; // High pressure
 
         // Balls Factor
-        if (ballsRemaining < 12 && runsNeeded > 20) prob -= 30; // Impossible finish
+        if (ballsRemaining < 12 && runsNeeded > 25) prob -= 40; // Impossible finish
 
         // Clamp
         prob = Math.max(1, Math.min(99, prob));
 
-        return { team: battingTeamName, percent: Math.round(prob) };
+        // Return the Favorite
+        if (prob >= 50) {
+            return { team: chasingTeamName, percent: Math.round(prob) };
+        } else {
+            return { team: defendingTeamName, percent: 100 - Math.round(prob) };
+        }
     };
 
     // --- Stats Calculations ---
