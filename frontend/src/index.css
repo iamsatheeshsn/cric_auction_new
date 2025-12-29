@@ -8,7 +8,7 @@ body {
 }
 
 .glass-panel {
-    @apply bg-white bg-opacity-90 backdrop-blur-md border border-white/20 shadow-xl rounded-xl;
+    @apply bg-white bg-opacity-90 backdrop-blur-md border border-white/20 shadow-xl rounded-xl dark:bg-slate-800 dark:bg-opacity-90 dark:border-white/10;
 }
 
 /* Custom Scrollbar */
@@ -42,6 +42,6 @@ body {
     }
 
     .input-field {
-        @apply w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue focus:border-transparent outline-none transition-all text-gray-700 bg-gray-50;
+        @apply w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue focus:border-transparent outline-none transition-all text-gray-700 bg-gray-50 dark:bg-slate-800 dark:border-slate-700 dark:text-gray-200;
     }
 }

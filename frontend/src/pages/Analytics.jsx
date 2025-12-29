@@ -12,6 +12,8 @@ const Analytics = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 5;
 
+    const [allPlayers, setAllPlayers] = useState([]);
+
     useEffect(() => {
         const fetchAuctions = async () => {
             try {
@@ -47,6 +49,15 @@ const Analytics = () => {
         setCurrentPage(1); // Reset to page 1 when filter changes
     }, [selectedAuction]);
 
+    useEffect(() => {
+        if (selectedAuction) {
+            // Fetch all players (disable/max limit) for analytics calculations
+            api.get(`/players/auction/${selectedAuction}?limit=1000`).then(res => {
+                setAllPlayers(res.data.players || []);
+            });
+        }
+    }, [selectedAuction]);
+
     if (loading) return <Layout><div className="flex justify-center p-12">Loading Analytics...</div></Layout>;
     if (!data) return <Layout><div className="flex justify-center p-12 text-red-500">Failed to load data.</div></Layout>;
 
@@ -67,6 +78,33 @@ const Analytics = () => {
     const currentTeams = sortedTeams.slice(indexOfFirstItem, indexOfLastItem);
     const totalPages = Math.ceil(sortedTeams.length / itemsPerPage);
 
+    // Heatmap Logic
+    const roles = ['Batsman', 'Bowler', 'All Rounder', 'Wicket Keeper'];
+    // We need to construct a matrix: Team vs Role counts. 
+    // Assuming data.teamRoleStats exists or we derive it.
+    // The current backend might not send this. I'll check if we can derive from budgetStats if it has nested info, 
+    // or I might need to fetch players to build this matrix client-side.
+    // For now, I'll add a fetchPlayers state to build this matrix.
+
+
+
+    const getTeamRoleCount = (teamId, role) => {
+        return allPlayers.filter(p => p.team_id == teamId && p.role?.trim() === role).length;
+    };
+
+    const handleExport = () => {
+        import('../utils/ReportGenerator')
+            .then(({ generateAuctionReport }) => {
+                const auctionName = auctions.find(a => a.id === parseInt(selectedAuction))?.name || 'Auction';
+                generateAuctionReport(auctionName, sortedTeams, allPlayers);
+            })
+            .catch(error => {
+                console.error("Export Failed", error);
+                // Assuming you have toast imported or just alert
+                alert("Failed to generate report. Please check console.");
+            });
+    };
+
     const handlePageChange = (pageNumber) => {
         setCurrentPage(pageNumber);
     };
@@ -78,13 +116,18 @@ const Analytics = () => {
                     <h1 className="text-3xl font-black text-deep-blue">Auction Analytics</h1>
                     <p className="text-gray-500">Deep dive into auction spending and strategies</p>
                 </div>
-                <div className="w-full md:w-auto">
+                <div className="w-full md:w-auto flex gap-4">
+                    <button
+                        onClick={handleExport}
+                        className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold shadow-sm transition-colors"
+                    >
+                        Download Report
+                    </button>
                     <select
                         value={selectedAuction}
                         onChange={(e) => setSelectedAuction(e.target.value)}
-                        className="w-full md:w-96 px-4 py-2 rounded-lg border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-deep-blue bg-white font-medium text-gray-700"
+                        className="w-full md:w-64 px-4 py-2 rounded-lg border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-deep-blue bg-white font-medium text-gray-700 dark:bg-slate-800 dark:border-gray-700 dark:text-white"
                     >
-
                         {auctions.map(auction => (
                             <option key={auction.id} value={auction.id}>
                                 {auction.name} ({new Date(auction.auction_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })})
@@ -153,6 +196,46 @@ const Analytics = () => {
                 </div>
             </div>
 
+            {/* Team Balance Heatmap */}
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-white/10 overflow-hidden mb-8">
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-white/10 bg-gray-50 dark:bg-white/5">
+                    <h3 className="font-bold text-gray-700 dark:text-white flex items-center gap-2">
+                        <FiPieChart className="text-red-500" /> Squad Balance Heatmap
+                    </h3>
+                </div>
+                <div className="p-6 overflow-x-auto">
+                    <div className="grid grid-cols-5 gap-1 min-w-[600px]">
+                        {/* Header Row */}
+                        <div className="p-2 font-bold text-gray-500 dark:text-gray-400">Team</div>
+                        {roles.map(r => <div key={r} className="p-2 font-bold text-gray-500 dark:text-gray-400 text-center">{r}</div>)}
+
+                        {/* Data Rows */}
+                        {sortedTeams.map(team => (
+                            <React.Fragment key={team.id}>
+                                <div className="p-2 font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2 border-t border-gray-100 dark:border-white/5">
+                                    <span className="truncate">{team.full_name}</span>
+                                </div>
+                                {roles.map(role => {
+                                    const count = getTeamRoleCount(team.id, role);
+                                    // Intensity Color Logic
+                                    let bgClass = 'bg-gray-50 dark:bg-white/5';
+                                    if (count > 0) bgClass = 'bg-blue-50 dark:bg-blue-900/20';
+                                    if (count >= 3) bgClass = 'bg-blue-100 dark:bg-blue-900/40';
+                                    if (count >= 5) bgClass = 'bg-blue-200 dark:bg-blue-900/60';
+                                    if (count >= 7) bgClass = 'bg-blue-300 dark:bg-blue-900/80';
+
+                                    return (
+                                        <div key={role} className={`p-2 flex items-center justify-center border-t border-gray-100 dark:border-white/5 ${bgClass}`}>
+                                            <span className="font-mono font-bold text-deep-blue dark:text-blue-300">{count}</span>
+                                        </div>
+                                    );
+                                })}
+                            </React.Fragment>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
             {/* Team Details Table */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
@@ -174,7 +257,7 @@ const Analytics = () => {
                             {currentTeams.map((team) => {
                                 const percent = ((team.spent / team.budget) * 100).toFixed(1);
                                 return (
-                                    <tr key={team.name} className="hover:bg-blue-50/50 transition-colors">
+                                    <tr key={team.id} className="hover:bg-blue-50/50 transition-colors">
                                         <td className="px-6 py-4 font-bold text-gray-800 flex items-center gap-3">
                                             {team.image_path && (
                                                 <img
@@ -241,7 +324,7 @@ const Analytics = () => {
                     </div>
                 )}
             </div>
-        </Layout>
+        </Layout >
     );
 };
 

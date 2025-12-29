@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import Layout from '../components/Layout';
 import Sidebar from '../components/Sidebar';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiCheckCircle, FiUser, FiArrowRight, FiSkipForward, FiMonitor, FiActivity, FiDollarSign, FiUsers } from 'react-icons/fi';
+import { FiCheckCircle, FiUser, FiArrowRight, FiSkipForward, FiMonitor, FiActivity, FiDollarSign, FiUsers, FiCpu, FiInfo } from 'react-icons/fi';
 import api from '../api/axios';
+import { getAuctionAdvice } from '../utils/AIModel';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -474,7 +475,7 @@ const AuctionRoom = () => {
                                                 <div className="inline-block bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full mb-3 shadow-lg uppercase tracking-wider">
                                                     {currentPlayer.role}
                                                 </div>
-                                                <h2 className="text-5xl font-black text-white mb-2 leading-none uppercase italic tracking-tighter drop-shadow-lg">
+                                                <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-white mb-2 leading-tight uppercase italic tracking-tighter drop-shadow-lg break-words">
                                                     {currentPlayer.name}
                                                 </h2>
                                                 <div className="flex gap-4 mt-4">
@@ -607,72 +608,125 @@ const AuctionRoom = () => {
                     </div>
 
                     {/* RIGHT: Teams Panel */}
-                    <div className="w-[400px] bg-white rounded-3xl shadow-xl border border-white/40 flex flex-col relative overflow-hidden ring-1 ring-black/5 flex-shrink-0">
-                        <div className="p-5 border-b border-gray-100 bg-gray-50/50 backdrop-blur-sm">
-                            <h3 className="text-lg font-black text-slate-700 flex items-center gap-2">
-                                <FiCheckCircle className="text-green-500" /> Active Teams
-                            </h3>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                            {teams.map(team => (
-                                <div
-                                    key={team.id}
-                                    className={`relative p-4 rounded-2xl border-2 transition-all duration-300 group ${currentBidder?.id === team.id
-                                        ? 'bg-green-50/50 border-green-500 shadow-green-100 shadow-lg scale-[1.02] z-10'
-                                        : !currentPlayer
-                                            ? 'bg-white border-transparent hover:border-gray-200'
-                                            : team.purse_remaining < currentBid
-                                                ? 'bg-gray-50 border-transparent opacity-50 grayscale'
-                                                : 'bg-white border-gray-100 hover:border-blue-200 hover:shadow-lg'
-                                        }`}
-                                >
-                                    <div className="flex items-center gap-4 mb-3">
-                                        <div className="w-14 h-14 rounded-full bg-white shadow-sm border border-gray-100 p-1 flex-shrink-0">
-                                            {team.image_path && <img src={getImageUrl(team.image_path)} className="w-full h-full object-contain rounded-full" />}
+                    <div className="w-[400px] flex flex-col gap-4">
+
+                        {/* AI Advisor Panel */}
+                        {currentBidder && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-3xl p-5 shadow-lg border border-white/20 text-white relative overflow-hidden"
+                            >
+                                <div className="absolute top-0 right-0 p-4 opacity-10"><FiCpu size={60} /></div>
+                                <div className="relative z-10">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <div className="bg-white/20 p-1.5 rounded-lg backdrop-blur-md">
+                                            <FiCpu className="text-cyan-300" />
                                         </div>
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex justify-between items-start">
-                                                <h4 className={`font-black text-lg truncate ${currentBidder?.id === team.id ? 'text-green-800' : 'text-slate-800'}`}>
-                                                    {team.short_name}
-                                                </h4>
-                                                {currentBidder?.id === team.id && (
-                                                    <span className="bg-green-500 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-full animate-pulse">Lead</span>
-                                                )}
-                                            </div>
-                                            <p className="text-xs font-bold text-slate-400">₹{team.purse_remaining.toLocaleString()}</p>
-                                        </div>
+                                        <span className="font-bold text-xs uppercase tracking-widest text-indigo-200">Auction IQ Advisor</span>
                                     </div>
 
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => setSelectedTeamViewer(team)}
-                                            className="flex-1 py-2 rounded-xl text-xs font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 transition-colors"
-                                        >
-                                            View
-                                        </button>
-                                        {currentPlayer && team.purse_remaining >= currentBid && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (currentBidder?.id === team.id) {
-                                                        handleSell(team.id);
-                                                    } else {
-                                                        addToHistory();
-                                                        setCurrentBidder(team);
-                                                        syncLiveBid(currentBid, team.id);
-                                                    }
-                                                }}
-                                                className={`flex-[2] py-2 rounded-xl text-xs font-black uppercase tracking-wide transition-all shadow-sm ${currentBidder?.id === team.id
-                                                    ? 'bg-green-500 hover:bg-green-600 text-white shadow-green-200'
-                                                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200 hover:scale-105'
-                                                    }`}
-                                            >
-                                                {currentBidder?.id === team.id ? 'Confirm Sold' : 'Bid Now'}
-                                            </button>
-                                        )}
-                                    </div>
+                                    {(() => {
+                                        // Calculate Advice for Current Bidder
+                                        const advice = getAuctionAdvice(
+                                            currentBidder,
+                                            // Pass sold players for this team
+                                            soldPlayers.filter(p => p.team_id === currentBidder.id || (p.Team?.id === currentBidder.id)),
+                                            unsoldPlayers,
+                                            teams,
+                                            soldPlayers,
+                                            auction
+                                        );
+                                        return (
+                                            <>
+                                                <p className="font-medium text-sm leading-relaxed mb-3">"{advice?.message}"</p>
+                                                <div className="bg-black/20 rounded-xl p-3 flex justify-between items-center backdrop-blur-sm border border-white/10">
+                                                    <div className="flex items-center gap-1 cursor-help" title="Estimated max bid to ensure you can fill all remaining squad slots">
+                                                        <span className="text-xs text-indigo-200 font-bold uppercase">AI Bid Cap</span>
+                                                        <FiInfo className="text-indigo-300 text-xs" />
+                                                    </div>
+                                                    <span className="font-mono font-bold text-cyan-300">₹{advice?.suggestedBidLimit?.toLocaleString()}</span>
+                                                </div>
+                                            </>
+                                        );
+                                    })()}
                                 </div>
-                            ))}
+                            </motion.div>
+                        )}
+
+                        <div className="flex-1 bg-white rounded-3xl shadow-xl border border-white/40 flex flex-col relative overflow-hidden ring-1 ring-black/5 flex-shrink-0">
+                            <div className="p-5 border-b border-gray-100 bg-gray-50/50 backdrop-blur-sm">
+                                <h3 className="text-lg font-black text-slate-700 flex items-center gap-2">
+                                    <FiCheckCircle className="text-green-500" /> Active Teams
+                                </h3>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                                {teams.map(team => (
+                                    <div
+                                        key={team.id}
+                                        className={`relative p-4 rounded-2xl border-2 transition-all duration-300 group ${currentBidder?.id === team.id
+                                            ? 'bg-green-50/50 border-green-500 shadow-green-100 shadow-lg scale-[1.02] z-10'
+                                            : !currentPlayer
+                                                ? 'bg-white border-transparent hover:border-gray-200'
+                                                : team.purse_remaining < currentBid
+                                                    ? 'bg-gray-50 border-transparent opacity-50 grayscale'
+                                                    : 'bg-white border-gray-100 hover:border-blue-200 hover:shadow-lg'
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-4 mb-3">
+                                            <div className="w-14 h-14 rounded-full bg-white shadow-sm border border-gray-100 p-1 flex-shrink-0">
+                                                {team.image_path && <img src={getImageUrl(team.image_path)} className="w-full h-full object-contain rounded-full" />}
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="min-w-0">
+                                                        <h4 className={`font-black text-lg truncate ${currentBidder?.id === team.id ? 'text-green-800' : 'text-slate-800'}`}>
+                                                            {team.name}
+                                                        </h4>
+                                                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                                                            <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">{team.short_name}</span>
+                                                            <span>•</span>
+                                                            <span className="text-slate-400">₹{team.purse_remaining.toLocaleString()}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {currentBidder?.id === team.id && (
+                                                <span className="bg-green-500 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-full animate-pulse ml-2 flex-shrink-0">Lead</span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => setSelectedTeamViewer(team)}
+                                                className="flex-1 py-2 rounded-xl text-xs font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 transition-colors"
+                                            >
+                                                View
+                                            </button>
+                                            {currentPlayer && team.purse_remaining >= currentBid && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (currentBidder?.id === team.id) {
+                                                            handleSell(team.id);
+                                                        } else {
+                                                            addToHistory();
+                                                            setCurrentBidder(team);
+                                                            syncLiveBid(currentBid, team.id);
+                                                        }
+                                                    }}
+                                                    className={`flex-[2] py-2 rounded-xl text-xs font-black uppercase tracking-wide transition-all shadow-sm ${currentBidder?.id === team.id
+                                                        ? 'bg-green-500 hover:bg-green-600 text-white shadow-green-200'
+                                                        : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200 hover:scale-105'
+                                                        }`}
+                                                >
+                                                    {currentBidder?.id === team.id ? 'Confirm Sold' : 'Bid Now'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -681,8 +735,10 @@ const AuctionRoom = () => {
                     isOpen={statusModal.isOpen}
                     onClose={() => setStatusModal({ isOpen: false, status: null })}
                     onConfirm={executeStatusChange}
-                    title={statusModal.status}
-                    message={`Change auction status to ${statusModal.status}?`}
+                    title={`Mark as ${statusModal.status}`}
+                    message={`Are you sure you want to change the auction status to ${statusModal.status}?`}
+                    confirmText="Yes, Change It"
+                    confirmButtonClass="bg-blue-600 hover:bg-blue-700 shadow-blue-200"
                 />
 
                 {/* Unsold Pool */}
@@ -732,7 +788,7 @@ const AuctionRoom = () => {
 
                 <PlayerInfoModal player={infoPlayer} isOpen={!!infoPlayer} onClose={() => setInfoPlayer(null)} />
             </div>
-        </div>
+        </div >
     );
 };
 

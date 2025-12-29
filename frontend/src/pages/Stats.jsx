@@ -257,10 +257,10 @@ const Stats = () => {
 
             {/* Auction Selector */}
             <div className="flex justify-center mb-8">
-                <div className="relative w-full md:w-80">
+                <div className="relative w-full md:w-auto md:min-w-[300px]">
                     <FiFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <select
-                        className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm font-medium text-gray-700"
+                        className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm font-medium text-gray-700 text-lg"
                         value={selectedAuction}
                         onChange={(e) => setSelectedAuction(e.target.value)}
                     >

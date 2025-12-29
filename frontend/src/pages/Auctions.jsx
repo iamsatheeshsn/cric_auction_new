@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiPlus, FiCalendar, FiMapPin, FiActivity, FiX, FiInfo, FiEdit, FiTrash2, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiCalendar, FiMapPin, FiActivity, FiX, FiInfo, FiEdit, FiTrash2, FiCopy } from 'react-icons/fi';
 import api from '../api/axios';
 import { toast } from 'react-toastify';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -111,8 +111,6 @@ const Auctions = () => {
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [auctionToDelete, setAuctionToDelete] = useState(null);
-
-    // ... (formatDate function)
 
     const handleDeleteClick = (auction) => {
         setAuctionToDelete(auction);
@@ -249,7 +247,7 @@ const Auctions = () => {
                                         className={`w-8 h-8 flex items-center justify-center rounded-full transition-all shadow-sm ${auction.status !== 'Upcoming' ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white/90 text-green-600 hover:bg-green-500 hover:text-white'}`}
                                         title={auction.status !== 'Upcoming' ? "Cannot import to started auction" : "Import Data"}
                                     >
-                                        <FiDownload className="text-sm" />
+                                        <FiCopy className="text-sm" />
                                     </button>
                                     <button
                                         onClick={() => handleEdit(auction)}
@@ -310,10 +308,20 @@ const Auctions = () => {
                                     <Link to={`/teams/${auction.id}`} className="flex items-center justify-center px-4 py-2 rounded-lg bg-gray-50 text-gray-700 font-semibold text-xs hover:bg-gray-100 border border-gray-200 transition-colors">
                                         Teams
                                     </Link>
-                                    <Link to={`/fixtures/${auction.id}`} className="col-span-2 flex items-center justify-center px-4 py-2 rounded-lg bg-gray-50 text-gray-700 font-semibold text-xs hover:bg-gray-100 border border-gray-200 transition-colors">
-                                        Fixtures
-                                    </Link>
-                                    {new Date(auction.auction_date).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0) || auction.status === 'Completed' ? (
+                                    {auction.status === 'Completed' ? (
+                                        <Link to={`/fixtures/${auction.id}`} className="col-span-2 flex items-center justify-center px-4 py-2 rounded-lg bg-gray-50 text-gray-700 font-semibold text-xs hover:bg-gray-100 border border-gray-200 transition-colors">
+                                            Fixtures
+                                        </Link>
+                                    ) : (
+                                        <button
+                                            disabled
+                                            title="Fixtures are available only after auction completion"
+                                            className="col-span-2 flex items-center justify-center px-4 py-2 rounded-lg bg-gray-100 text-gray-400 font-semibold text-xs border border-gray-200 cursor-not-allowed"
+                                        >
+                                            Fixtures
+                                        </button>
+                                    )}
+                                    {auction.status === 'Completed' ? (
                                         <button
                                             onClick={() => toast.error("This auction has ended.")}
                                             className="col-span-2 flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gray-100 text-gray-400 font-bold text-sm cursor-not-allowed"

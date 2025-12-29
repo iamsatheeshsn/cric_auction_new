@@ -17,14 +17,14 @@ const Layout = ({ children }) => {
     ];
 
     return (
-        <div className="flex h-screen bg-slate-100 print:bg-white print:h-auto">
+        <div className="flex h-screen bg-slate-100 dark:bg-slate-900 print:bg-white print:h-auto transition-colors duration-300">
             {/* Sidebar */}
             <Sidebar />
 
             {/* Main Content */}
             <div className="flex-1 overflow-auto print:overflow-visible print:h-auto">
-                <header className="bg-white shadow-sm p-4 flex justify-between items-center px-8 print:hidden">
-                    <h2 className="text-xl font-semibold text-gray-800">
+                <header className="bg-white dark:bg-slate-800 shadow-sm p-4 flex justify-between items-center px-8 print:hidden transition-colors duration-300">
+                    <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
                         {menuItems.find(i => location.pathname.startsWith(i.path))?.label || 'Dashboard'}
                     </h2>
                     <div className="flex items-center gap-4">

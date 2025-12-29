@@ -1,11 +1,13 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FiHome, FiGrid, FiUsers, FiLogOut, FiSettings, FiActivity, FiPieChart, FiAward } from 'react-icons/fi';
+import { FiHome, FiGrid, FiUsers, FiLogOut, FiSettings, FiActivity, FiPieChart, FiAward, FiSun, FiMoon } from 'react-icons/fi';
+import { useTheme } from '../context/ThemeContext';
 import Logo from './Logo';
 
 const Sidebar = () => {
     const location = useLocation();
     const navigate = useNavigate();
+    const { theme, toggleTheme } = useTheme();
 
     const menuItems = [
         { path: '/dashboard', label: 'Dashboard', icon: <FiHome /> },
@@ -23,9 +25,9 @@ const Sidebar = () => {
     };
 
     return (
-        <div className="w-64 bg-deep-blue text-white shadow-xl flex flex-col print:hidden h-full flex-shrink-0">
+        <div className="w-72 bg-deep-blue text-white shadow-xl flex flex-col print:hidden h-full flex-shrink-0">
             <div className="p-6 flex items-center gap-3 border-b border-white/10 shrink-0">
-                <Logo className="w-12 h-12" textClassName="text-2xl font-bold" />
+                <Logo className="w-12 h-12" textClassName="text-xl font-bold" />
             </div>
 
             <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
@@ -42,7 +44,14 @@ const Sidebar = () => {
                 })}
             </nav>
 
-            <div className="p-4 border-t border-white/10 shrink-0">
+            <div className="p-4 border-t border-white/10 shrink-0 space-y-2">
+                <button
+                    onClick={toggleTheme}
+                    className="flex items-center gap-4 w-full px-4 py-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+                >
+                    {theme === 'dark' ? <FiSun className="text-xl text-yellow-400" /> : <FiMoon className="text-xl" />}
+                    <span className="font-medium">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+                </button>
                 <Link to="/settings" className="flex items-center gap-4 w-full px-4 py-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all">
                     <FiSettings className="text-xl" />
                     <span className="font-medium">Settings</span>

@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import api from '../api/axios';
 import { toast } from 'react-toastify';
@@ -7,6 +7,7 @@ import { FiArrowLeft, FiUser, FiActivity, FiList, FiFileText, FiMonitor, FiMapPi
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationModal from '../components/ConfirmationModal';
 import PlayerInfoModal from '../components/PlayerInfoModal';
+import { calculateWinProbability } from '../utils/AIModel';
 
 
 const MatchScoring = () => {
@@ -870,6 +871,12 @@ const MatchScoring = () => {
                     <div className="text-right">
                         <div className="flex flex-col items-end gap-1">
                             <div className="flex gap-2 items-center">
+                                <Link to={`/broadcast/${fixtureId}`} target="_blank" className="flex items-center gap-1 bg-slate-900 text-white px-2 py-1 rounded-md text-xs font-bold hover:bg-slate-700 transition-colors shadow-sm mr-2" title="Open Broadcast View for OBS">
+                                    <FiMonitor /> Stream
+                                </Link>
+                                <Link to={`/match-analytics/${fixtureId}`} target="_blank" className="flex items-center gap-1 bg-blue-600 text-white px-2 py-1 rounded-md text-xs font-bold hover:bg-blue-700 transition-colors shadow-sm mr-2" title="View Advanced Analytics">
+                                    <FiActivity /> Analytics
+                                </Link>
                                 <span className="text-sm font-bold text-gray-500">Target: {fixture.total_overs && `${fixture.total_overs} Overs`}</span>
                                 <div className={`px-3 py-1 rounded-full text-xs font-bold inline-block ${fixture.status === 'Live' ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-gray-100 text-gray-500'}`}>
                                     {fixture.status?.toUpperCase() || 'UNKNOWN'}
@@ -884,60 +891,64 @@ const MatchScoring = () => {
                         </div>
                     </div>
                 </div>
-                <div className="flex justify-between items-center text-center">
-                    <div className="flex-1 flex flex-col items-center">
-                        <div className="w-20 h-20 rounded-full bg-gray-50 overflow-hidden mb-3 border border-gray-100 shadow-sm">
-                            <img
-                                key={fixture.Team1?.id}
-                                src={getImageUrl(fixture.Team1?.image_path || fixture.Team1?.logo_url || fixture.Team1?.image)}
-                                alt={fixture.Team1?.name}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                    e.target.onerror = null;
-                                    e.target.src = 'https://via.placeholder.com/60?text=' + (fixture.Team1?.short_name || 'T1');
-                                }}
-                            />
-                        </div>
-                        <h2 className={`text-2xl font-bold ${battingTeam?.id == fixture.Team1?.id ? 'text-deep-blue' : 'text-gray-800'}`}>{fixture.Team1?.name}</h2>
-                        <p className={`text-4xl font-black my-2 ${battingTeam?.id == fixture.Team1?.id ? 'text-gray-900' : 'text-gray-400'}`}>
-                            {team1Score?.runs}/{team1Score?.wickets}
-                        </p>
-                        <p className="text-gray-500 text-sm">Overs: {team1Score?.overs}</p>
+            </div>
+
+            <div className="flex justify-between items-center text-center">
+                <div className="flex-1 flex flex-col items-center">
+                    <div className="w-20 h-20 rounded-full bg-gray-50 overflow-hidden mb-3 border border-gray-100 shadow-sm">
+                        <img
+                            key={fixture.Team1?.id}
+                            src={getImageUrl(fixture.Team1?.image_path || fixture.Team1?.logo_url || fixture.Team1?.image)}
+                            alt={fixture.Team1?.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = 'https://via.placeholder.com/60?text=' + (fixture.Team1?.short_name || 'T1');
+                            }}
+                        />
                     </div>
-                    <div className="text-gray-300 text-2xl font-bold px-4">VS</div>
-                    <div className="flex-1 flex flex-col items-center">
-                        <div className="w-20 h-20 rounded-full bg-gray-50 overflow-hidden mb-3 border border-gray-100 shadow-sm">
-                            <img
-                                src={getImageUrl(fixture.Team2?.image_path || fixture.Team2?.logo_url || fixture.Team2?.image)}
-                                alt={fixture.Team2?.name}
-                                className="w-full h-full object-cover"
-                                onError={(e) => e.target.src = 'https://via.placeholder.com/60?text=' + (fixture.Team2?.short_name || 'T2')}
-                            />
-                        </div>
-                        <h2 className={`text-2xl font-bold ${battingTeam?.id == fixture.Team2?.id ? 'text-deep-blue' : 'text-gray-800'}`}>{fixture.Team2?.name}</h2>
-                        <p className={`text-4xl font-black my-2 ${battingTeam?.id == fixture.Team2?.id ? 'text-gray-900' : 'text-gray-400'}`}>
-                            {team2Score?.runs}/{team2Score?.wickets}
-                        </p>
-                        <p className="text-gray-500 text-sm">Overs: {team2Score?.overs}</p>
+                    <h2 className={`text-2xl font-bold ${battingTeam?.id == fixture.Team1?.id ? 'text-deep-blue' : 'text-gray-800'}`}>{fixture.Team1?.name}</h2>
+                    <p className={`text-4xl font-black my-2 ${battingTeam?.id == fixture.Team1?.id ? 'text-gray-900' : 'text-gray-400'}`}>
+                        {team1Score?.runs}/{team1Score?.wickets}
+                    </p>
+                    <p className="text-gray-500 text-sm">Overs: {team1Score?.overs}</p>
+                </div>
+                <div className="text-gray-300 text-2xl font-bold px-4">VS</div>
+                <div className="flex-1 flex flex-col items-center">
+                    <div className="w-20 h-20 rounded-full bg-gray-50 overflow-hidden mb-3 border border-gray-100 shadow-sm">
+                        <img
+                            src={getImageUrl(fixture.Team2?.image_path || fixture.Team2?.logo_url || fixture.Team2?.image)}
+                            alt={fixture.Team2?.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => e.target.src = 'https://via.placeholder.com/60?text=' + (fixture.Team2?.short_name || 'T2')}
+                        />
                     </div>
+                    <h2 className={`text-2xl font-bold ${battingTeam?.id == fixture.Team2?.id ? 'text-deep-blue' : 'text-gray-800'}`}>{fixture.Team2?.name}</h2>
+                    <p className={`text-4xl font-black my-2 ${battingTeam?.id == fixture.Team2?.id ? 'text-gray-900' : 'text-gray-400'}`}>
+                        {team2Score?.runs}/{team2Score?.wickets}
+                    </p>
+                    <p className="text-gray-500 text-sm">Overs: {team2Score?.overs}</p>
                 </div>
             </div>
 
+
             {/* Tabs */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 flex overflow-hidden">
-                {['scoring', 'scorecard', 'commentary', 'summary'].map(tab => (
-                    <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        className={`flex-1 py-4 font-bold text-center capitalize transition-colors ${activeTab === tab ? 'bg-deep-blue text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-                    >
-                        {tab}
-                    </button>
-                ))}
-            </div>
+            < div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 flex overflow-hidden" >
+                {
+                    ['scoring', 'scorecard', 'commentary', 'summary'].map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`flex-1 py-4 font-bold text-center capitalize transition-colors ${activeTab === tab ? 'bg-deep-blue text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+                        >
+                            {tab}
+                        </button>
+                    ))
+                }
+            </div >
 
             {/* Main Content Area */}
-            <div className="min-h-[500px]">
+            < div className="min-h-[500px]" >
                 {activeTab === 'scoring' && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Selection (Hide or Disable if Innings Ended?) -> Let's keep it visible but maybe disabled or just leave it */}
@@ -1107,356 +1118,362 @@ const MatchScoring = () => {
                     </div>
                 )}
 
-                {activeTab === 'scorecard' && (
-                    <div className="space-y-6">
-                        {[{ inn: 1, stats: inning1Stats }, { inn: 2, stats: inning2Stats }].map(({ inn, stats }) => {
-                            const battedPlayers = stats.batting.filter(p => p.status !== 'dnb');
-                            const dnbPlayers = stats.batting.filter(p => p.status === 'dnb');
+                {
+                    activeTab === 'scorecard' && (
+                        <div className="space-y-6">
+                            {[{ inn: 1, stats: inning1Stats }, { inn: 2, stats: inning2Stats }].map(({ inn, stats }) => {
+                                const battedPlayers = stats.batting.filter(p => p.status !== 'dnb');
+                                const dnbPlayers = stats.batting.filter(p => p.status === 'dnb');
 
-                            return (
-                                <div key={inn} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                                    <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                                        <h3 className="font-bold text-lg text-gray-800">{stats.battingTeam?.name} Innings</h3>
-                                        <span className="font-mono font-bold text-gray-600">
-                                            {inn === 1 ? summary?.score1?.runs : summary?.score2?.runs}/{inn === 1 ? summary?.score1?.wickets : summary?.score2?.wickets}
-                                            ({inn === 1 ? summary?.score1?.overs : summary?.score2?.overs} Ov)
-                                        </span>
-                                    </div>
-                                    <div className="p-6">
-                                        {/* Batting Table */}
-                                        <table className="w-full text-sm mb-6">
-                                            <thead>
-                                                <tr className="border-b text-gray-400 text-left">
-                                                    <th className="py-2">Batter</th>
-                                                    <th className="py-2">Status</th>
-                                                    <th className="py-2 text-right">R</th>
-                                                    <th className="py-2 text-right">B</th>
-                                                    <th className="py-2 text-right">4s</th>
-                                                    <th className="py-2 text-right">6s</th>
-                                                    <th className="py-2 text-right">SR</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {battedPlayers.map(p => (
-                                                    <tr key={p.id} className="border-b border-gray-50 text-gray-700">
-                                                        <td className="py-2 font-bold flex items-center gap-2">
-                                                            <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0">
-                                                                <img
-                                                                    src={getImageUrl(p.image_path || p.image_url || p.image)}
-                                                                    alt={p.name}
-                                                                    className="w-full h-full object-cover"
-                                                                    onError={(e) => e.target.src = 'https://via.placeholder.com/40?text=' + p.name.charAt(0)}
-                                                                />
-                                                            </div>
-                                                            <span className="cursor-pointer hover:text-blue-600 font-bold" onClick={() => setInfoPlayer(p)}>{p.name}</span>
-                                                        </td>
-                                                        <td className="py-2 text-gray-500 text-xs">{p.status}</td>
-                                                        <td className="py-2 text-right font-bold">{p.runs}</td>
-                                                        <td className="py-2 text-right">{p.bf}</td>
-                                                        <td className="py-2 text-right">{p.fours}</td>
-                                                        <td className="py-2 text-right">{p.sixes}</td>
-                                                        <td className="py-2 text-right">{p.sr}</td>
+                                return (
+                                    <div key={inn} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                                        <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                                            <h3 className="font-bold text-lg text-gray-800">{stats.battingTeam?.name} Innings</h3>
+                                            <span className="font-mono font-bold text-gray-600">
+                                                {inn === 1 ? summary?.score1?.runs : summary?.score2?.runs}/{inn === 1 ? summary?.score1?.wickets : summary?.score2?.wickets}
+                                                ({inn === 1 ? summary?.score1?.overs : summary?.score2?.overs} Ov)
+                                            </span>
+                                        </div>
+                                        <div className="p-6">
+                                            {/* Batting Table */}
+                                            <table className="w-full text-sm mb-6">
+                                                <thead>
+                                                    <tr className="border-b text-gray-400 text-left">
+                                                        <th className="py-2">Batter</th>
+                                                        <th className="py-2">Status</th>
+                                                        <th className="py-2 text-right">R</th>
+                                                        <th className="py-2 text-right">B</th>
+                                                        <th className="py-2 text-right">4s</th>
+                                                        <th className="py-2 text-right">6s</th>
+                                                        <th className="py-2 text-right">SR</th>
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                                </thead>
+                                                <tbody>
+                                                    {battedPlayers.map(p => (
+                                                        <tr key={p.id} className="border-b border-gray-50 text-gray-700">
+                                                            <td className="py-2 font-bold flex items-center gap-2">
+                                                                <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0">
+                                                                    <img
+                                                                        src={getImageUrl(p.image_path || p.image_url || p.image)}
+                                                                        alt={p.name}
+                                                                        className="w-full h-full object-cover"
+                                                                        onError={(e) => e.target.src = 'https://via.placeholder.com/40?text=' + p.name.charAt(0)}
+                                                                    />
+                                                                </div>
+                                                                <span className="cursor-pointer hover:text-blue-600 font-bold" onClick={() => setInfoPlayer(p)}>{p.name}</span>
+                                                            </td>
+                                                            <td className="py-2 text-gray-500 text-xs">{p.status}</td>
+                                                            <td className="py-2 text-right font-bold">{p.runs}</td>
+                                                            <td className="py-2 text-right">{p.bf}</td>
+                                                            <td className="py-2 text-right">{p.fours}</td>
+                                                            <td className="py-2 text-right">{p.sixes}</td>
+                                                            <td className="py-2 text-right">{p.sr}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
 
-                                        {/* Did Not Bat List */}
-                                        {dnbPlayers.length > 0 && (
-                                            <div className="text-sm text-gray-600 mb-6">
-                                                <span className="font-bold">Did not bat: </span>
-                                                {dnbPlayers.map((p, i) => (
-                                                    <span key={p.id}>
-                                                        <span className="cursor-pointer hover:text-blue-600 hover:underline" onClick={() => setInfoPlayer(p)}>{p.name}</span>
-                                                        {i < dnbPlayers.length - 1 ? ', ' : ''}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        )}
+                                            {/* Did Not Bat List */}
+                                            {dnbPlayers.length > 0 && (
+                                                <div className="text-sm text-gray-600 mb-6">
+                                                    <span className="font-bold">Did not bat: </span>
+                                                    {dnbPlayers.map((p, i) => (
+                                                        <span key={p.id}>
+                                                            <span className="cursor-pointer hover:text-blue-600 hover:underline" onClick={() => setInfoPlayer(p)}>{p.name}</span>
+                                                            {i < dnbPlayers.length - 1 ? ', ' : ''}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
 
-                                        {/* Bowling Table */}
-                                        <h4 className="font-bold text-gray-600 mb-2 text-xs uppercase">Bowling</h4>
-                                        <table className="w-full text-sm">
-                                            <thead>
-                                                <tr className="border-b text-gray-400 text-left">
-                                                    <th className="py-2">Bowler</th>
-                                                    <th className="py-2 text-right">O</th>
-                                                    <th className="py-2 text-right">M</th>
-                                                    <th className="py-2 text-right">R</th>
-                                                    <th className="py-2 text-right">W</th>
-                                                    <th className="py-2 text-right">Eco</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {stats.bowling.map(p => (
-                                                    <tr key={p.id} className="border-b border-gray-50 text-gray-700">
-                                                        <td className="py-2 font-bold flex items-center gap-2">
-                                                            <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0">
-                                                                <img
-                                                                    src={getImageUrl(p.image_path || p.image_url || p.image)}
-                                                                    alt={p.name}
-                                                                    className="w-full h-full object-cover"
-                                                                    onError={(e) => e.target.src = 'https://via.placeholder.com/40?text=' + p.name.charAt(0)}
-                                                                />
-                                                            </div>
-                                                            <span className="cursor-pointer hover:text-blue-600 font-bold" onClick={() => setInfoPlayer(p)}>{p.name}</span>
-                                                        </td>
-                                                        <td className="py-2 text-right">{p.overs}</td>
-                                                        <td className="py-2 text-right">0</td>
-                                                        <td className="py-2 text-right">{p.runs}</td>
-                                                        <td className="py-2 text-right font-bold">{p.wickets}</td>
-                                                        <td className="py-2 text-right">{p.econ}</td>
+                                            {/* Bowling Table */}
+                                            <h4 className="font-bold text-gray-600 mb-2 text-xs uppercase">Bowling</h4>
+                                            <table className="w-full text-sm">
+                                                <thead>
+                                                    <tr className="border-b text-gray-400 text-left">
+                                                        <th className="py-2">Bowler</th>
+                                                        <th className="py-2 text-right">O</th>
+                                                        <th className="py-2 text-right">M</th>
+                                                        <th className="py-2 text-right">R</th>
+                                                        <th className="py-2 text-right">W</th>
+                                                        <th className="py-2 text-right">Eco</th>
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                                </thead>
+                                                <tbody>
+                                                    {stats.bowling.map(p => (
+                                                        <tr key={p.id} className="border-b border-gray-50 text-gray-700">
+                                                            <td className="py-2 font-bold flex items-center gap-2">
+                                                                <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0">
+                                                                    <img
+                                                                        src={getImageUrl(p.image_path || p.image_url || p.image)}
+                                                                        alt={p.name}
+                                                                        className="w-full h-full object-cover"
+                                                                        onError={(e) => e.target.src = 'https://via.placeholder.com/40?text=' + p.name.charAt(0)}
+                                                                    />
+                                                                </div>
+                                                                <span className="cursor-pointer hover:text-blue-600 font-bold" onClick={() => setInfoPlayer(p)}>{p.name}</span>
+                                                            </td>
+                                                            <td className="py-2 text-right">{p.overs}</td>
+                                                            <td className="py-2 text-right">0</td>
+                                                            <td className="py-2 text-right">{p.runs}</td>
+                                                            <td className="py-2 text-right font-bold">{p.wickets}</td>
+                                                            <td className="py-2 text-right">{p.econ}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-
-                {activeTab === 'commentary' && (
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center sticky top-0 z-10">
-                            <h3 className="font-bold text-gray-700">Commentary</h3>
-                            <div className="text-sm font-bold text-deep-blue">
-                                Batting: {currentBattingTeamName}
-                            </div>
-                        </div>
-                        <div className="divide-y divide-gray-100">
-                            {commentaryTimeline.map((item, index) => {
-                                if (item.type === 'innings_break') {
-                                    return (
-                                        <div key={`break-${index}`} className="bg-deep-blue text-white p-4 text-center">
-                                            <h4 className="font-black text-lg uppercase tracking-wide mb-1">{item.text}</h4>
-                                            <p className="text-sm font-bold opacity-90">{item.team}: {item.score}</p>
-                                            {item.target && <p className="text-xs mt-2 font-mono bg-white/20 inline-block px-3 py-1 rounded-full">Target: {item.target}</p>}
-                                        </div>
-                                    );
-                                } else if (item.type === 'summary') {
-                                    return (
-                                        <div key={`summary-${index}`} className="bg-blue-50/50 p-4 border-y border-blue-100">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <h4 className="font-bold text-gray-800 uppercase text-xs tracking-wider">End of Over {item.overNumber}</h4>
-                                                <span className="font-black text-xl text-deep-blue">{item.runsInOver} runs</span>
-                                            </div>
-                                            <div className="flex justify-between items-center mb-3 text-sm">
-                                                <span className="font-bold text-gray-600">{item.battingTeam}: {item.score}</span>
-                                                <div className="flex gap-3 text-gray-500 text-xs">
-                                                    <span>CRR: {item.crr}</span>
-                                                    {item.rrr && <span>• RRR: {item.rrr}</span>}
-                                                    {item.equation && <span>• {item.equation}</span>}
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4 text-sm bg-white p-3 rounded-lg border border-gray-100">
-                                                <div className="space-y-1">
-                                                    <div className="flex justify-between font-bold text-gray-800">
-                                                        <span>{item.striker.name}</span>
-                                                        <span>{item.striker.runs} ({item.striker.balls}b)</span>
-                                                    </div>
-                                                    <div className="flex justify-between text-gray-500">
-                                                        <span>{item.nonStriker.name}</span>
-                                                        <span>{item.nonStriker.runs} ({item.nonStriker.balls}b)</span>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right border-l pl-4 border-gray-100 flex flex-col justify-center">
-                                                    <div className="font-bold text-gray-800">{item.bowler.name}</div>
-                                                    <div className="text-gray-500 text-xs">{item.bowler.figures}</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                } else {
-                                    const ball = item.data;
-                                    const allPlayers = [...(fixture.Team1?.Players || []), ...(fixture.Team2?.Players || [])];
-                                    const bowler = allPlayers.find(p => p.id === ball.bowler_id);
-
-                                    const bowlerName = bowler?.name || getPlayerName(ball.bowler_id);
-                                    const strikerName = getPlayerName(ball.striker_id);
-                                    const totalRuns = ball.runs_scored + ball.extras;
-
-                                    let commText = `${bowlerName} to ${strikerName}, ${totalRuns} runs`;
-                                    if (ball.extra_type !== 'None') commText += ` (${ball.extra_type})`; // Simplified text
-                                    if (ball.runs_scored === 4) commText = `${bowlerName} to ${strikerName}, FOUR runs!`;
-                                    if (ball.runs_scored === 6) commText = `${bowlerName} to ${strikerName}, SIX! High and handsome!`;
-
-                                    if (ball.is_wicket) {
-                                        commText = `${bowlerName} to ${strikerName}, OUT! ${ball.wicket_type}`;
-                                        if (['Caught', 'Run Out', 'Stumped'].includes(ball.wicket_type) && ball.fielder_id) {
-                                            commText += ` by ${getPlayerName(ball.fielder_id)}`;
-                                        }
-                                    }
-                                    if (ball.commentary) commText = ball.commentary; // custom override
-
-                                    let rowClass = "p-4 transition-colors flex gap-4 border-b border-gray-100";
-                                    if (ball.is_wicket) rowClass += " bg-red-50";
-                                    else if (ball.runs_scored === 4) rowClass += " bg-blue-50";
-                                    else if (ball.runs_scored === 6) rowClass += " bg-purple-50";
-                                    else rowClass += " hover:bg-gray-50 bg-white";
-
-                                    return (
-                                        <div key={ball.id} className={rowClass}>
-                                            <div className="text-gray-900 font-mono font-bold w-12 text-sm pt-1">{ball.over_number}.{ball.ball_number}</div>
-                                            {/* Avatar */}
-                                            <div className="hidden sm:block">
-                                                <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0">
-                                                    <img
-                                                        src={getImageUrl(bowler?.image_path || bowler?.image_url || bowler?.image)}
-                                                        alt={bowlerName}
-                                                        className="w-full h-full object-cover"
-                                                        onError={(e) => e.target.src = 'https://via.placeholder.com/40?text=' + (bowlerName?.charAt(0) || 'B')}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="text-sm font-bold text-gray-800">{commText}</div>
-                                                {/* Auto-gen text if custom empty? */}
-                                                {!ball.commentary && (
-                                                    <div className="text-xs text-gray-400 mt-1">
-                                                        {ball.runs_scored === 4 ? 'Boundary to the fence.' : ball.runs_scored === 6 ? 'Maximum!' : ''}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="flex flex-col gap-1 items-end">
-                                                {ball.runs_scored === 4 && <div className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-bold w-fit border border-blue-200">FOUR</div>}
-                                                {ball.runs_scored === 6 && <div className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-bold w-fit border border-purple-200">SIX</div>}
-                                                {ball.is_wicket && <div className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-bold w-fit border border-red-200">OUT</div>}
-                                            </div>
-                                        </div>
-                                    );
-                                }
+                                );
                             })}
                         </div>
-                    </div>
-                )}
+                    )
+                }
 
-                {activeTab === 'summary' && (
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
-                        <h2 className="text-3xl font-black text-gray-800 mb-2">Match Summary</h2>
-                        <div className="flex items-center justify-center gap-4 text-gray-500 mb-8 font-medium">
-                            <div className="flex items-center gap-1.5">
-                                <FiMapPin className="text-gray-400" />
-                                <span>{fixture.venue}</span>
-                            </div>
-                            <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-                            <div className="flex items-center gap-1.5">
-                                <FiCalendar className="text-gray-400" />
-                                <span>{new Date(fixture.match_date).toDateString()}</span>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-8 max-w-2xl mx-auto">
-                            <div className="p-6 bg-blue-50 rounded-2xl flex flex-col items-center">
-                                <div className="w-24 h-24 rounded-full bg-white overflow-hidden mb-4 border border-blue-100 shadow-md">
-                                    <img
-                                        src={getImageUrl(fixture.Team1?.image_path || fixture.Team1?.logo_url || fixture.Team1?.image)}
-                                        alt={fixture.Team1?.name}
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => e.target.src = 'https://via.placeholder.com/60?text=' + (fixture.Team1?.short_name || 'T1')}
-                                    />
+                {
+                    activeTab === 'commentary' && (
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center sticky top-0 z-10">
+                                <h3 className="font-bold text-gray-700">Commentary</h3>
+                                <div className="text-sm font-bold text-deep-blue">
+                                    Batting: {currentBattingTeamName}
                                 </div>
-                                <h3 className="text-xl font-bold text-deep-blue mb-2">{fixture.Team1?.name}</h3>
-                                <p className="text-3xl font-black">{team1Score?.runs}/{team1Score?.wickets}</p>
-                                <p className="text-gray-500">{team1Score?.overs} Overs</p>
                             </div>
-                            <div className="p-6 bg-yellow-50 rounded-2xl flex flex-col items-center">
-                                <div className="w-24 h-24 rounded-full bg-white overflow-hidden mb-4 border border-yellow-100 shadow-md">
-                                    <img
-                                        src={getImageUrl(fixture.Team2?.image_path || fixture.Team2?.logo_url || fixture.Team2?.image)}
-                                        alt={fixture.Team2?.name}
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => e.target.src = 'https://via.placeholder.com/60?text=' + (fixture.Team2?.short_name || 'T2')}
-                                    />
-                                </div>
-                                <h3 className="text-xl font-bold text-yellow-700 mb-2">{fixture.Team2?.name}</h3>
-                                <p className="text-3xl font-black">{team2Score?.runs}/{team2Score?.wickets}</p>
-                                <p className="text-gray-500">{team2Score?.overs} Overs</p>
-                            </div>
-                        </div>
-
-                        <div className="mt-12">
-                            <h4 className="font-bold text-gray-400 uppercase text-sm mb-4">Result</h4>
-                            {(() => {
-                                let resultText = fixture.result_description;
-
-                                if (fixture.status === 'Completed' && !resultText && summary) {
-                                    // Fallback Check in UI
-                                    const target = summary.score1.runs + 1;
-                                    const currentRuns = summary.score2.runs;
-                                    const currentWickets = summary.score2.wickets;
-
-                                    // Check Winner
-                                    if (currentRuns >= target) {
-                                        // Batting 2nd Won
-                                        const battingSecondTeamId = (fixture.toss_decision === 'Bat' && fixture.toss_winner_id === fixture.team1_id) ? fixture.team2_id :
-                                            (fixture.toss_decision === 'Bowl' && fixture.toss_winner_id === fixture.team1_id) ? fixture.team1_id :
-                                                (fixture.toss_decision === 'Bat' && fixture.toss_winner_id === fixture.team2_id) ? fixture.team1_id : fixture.team2_id;
-
-                                        const battingSecondTeamName = battingSecondTeamId === fixture.Team1.id ? fixture.Team1.name : fixture.Team2.name;
-                                        const wicketsLeft = 10 - currentWickets;
-                                        resultText = `${battingSecondTeamName} won by ${wicketsLeft} wickets`;
+                            <div className="divide-y divide-gray-100">
+                                {commentaryTimeline.map((item, index) => {
+                                    if (item.type === 'innings_break') {
+                                        return (
+                                            <div key={`break-${index}`} className="bg-deep-blue text-white p-4 text-center">
+                                                <h4 className="font-black text-lg uppercase tracking-wide mb-1">{item.text}</h4>
+                                                <p className="text-sm font-bold opacity-90">{item.team}: {item.score}</p>
+                                                {item.target && <p className="text-xs mt-2 font-mono bg-white/20 inline-block px-3 py-1 rounded-full">Target: {item.target}</p>}
+                                            </div>
+                                        );
+                                    } else if (item.type === 'summary') {
+                                        return (
+                                            <div key={`summary-${index}`} className="bg-blue-50/50 p-4 border-y border-blue-100">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <h4 className="font-bold text-gray-800 uppercase text-xs tracking-wider">End of Over {item.overNumber}</h4>
+                                                    <span className="font-black text-xl text-deep-blue">{item.runsInOver} runs</span>
+                                                </div>
+                                                <div className="flex justify-between items-center mb-3 text-sm">
+                                                    <span className="font-bold text-gray-600">{item.battingTeam}: {item.score}</span>
+                                                    <div className="flex gap-3 text-gray-500 text-xs">
+                                                        <span>CRR: {item.crr}</span>
+                                                        {item.rrr && <span>• RRR: {item.rrr}</span>}
+                                                        {item.equation && <span>• {item.equation}</span>}
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4 text-sm bg-white p-3 rounded-lg border border-gray-100">
+                                                    <div className="space-y-1">
+                                                        <div className="flex justify-between font-bold text-gray-800">
+                                                            <span>{item.striker.name}</span>
+                                                            <span>{item.striker.runs} ({item.striker.balls}b)</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-gray-500">
+                                                            <span>{item.nonStriker.name}</span>
+                                                            <span>{item.nonStriker.runs} ({item.nonStriker.balls}b)</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right border-l pl-4 border-gray-100 flex flex-col justify-center">
+                                                        <div className="font-bold text-gray-800">{item.bowler.name}</div>
+                                                        <div className="text-gray-500 text-xs">{item.bowler.figures}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
                                     } else {
-                                        // Batting 1st Won (or Tie)
-                                        if (currentRuns < summary.score1.runs) {
-                                            const runDiff = summary.score1.runs - currentRuns;
-                                            const battingFirstTeamId = (fixture.toss_decision === 'Bat' && fixture.toss_winner_id === fixture.team1_id) ? fixture.team1_id :
-                                                (fixture.toss_decision === 'Bowl' && fixture.toss_winner_id === fixture.team1_id) ? fixture.team2_id :
-                                                    (fixture.toss_decision === 'Bat' && fixture.toss_winner_id === fixture.team2_id) ? fixture.team2_id : fixture.team1_id;
+                                        const ball = item.data;
+                                        const allPlayers = [...(fixture.Team1?.Players || []), ...(fixture.Team2?.Players || [])];
+                                        const bowler = allPlayers.find(p => p.id === ball.bowler_id);
 
-                                            const battingFirstTeamName = battingFirstTeamId === fixture.Team1.id ? fixture.Team1.name : fixture.Team2.name;
-                                            resultText = `${battingFirstTeamName} won by ${runDiff} runs`;
+                                        const bowlerName = bowler?.name || getPlayerName(ball.bowler_id);
+                                        const strikerName = getPlayerName(ball.striker_id);
+                                        const totalRuns = ball.runs_scored + ball.extras;
+
+                                        let commText = `${bowlerName} to ${strikerName}, ${totalRuns} runs`;
+                                        if (ball.extra_type !== 'None') commText += ` (${ball.extra_type})`; // Simplified text
+                                        if (ball.runs_scored === 4) commText = `${bowlerName} to ${strikerName}, FOUR runs!`;
+                                        if (ball.runs_scored === 6) commText = `${bowlerName} to ${strikerName}, SIX! High and handsome!`;
+
+                                        if (ball.is_wicket) {
+                                            commText = `${bowlerName} to ${strikerName}, OUT! ${ball.wicket_type}`;
+                                            if (['Caught', 'Run Out', 'Stumped'].includes(ball.wicket_type) && ball.fielder_id) {
+                                                commText += ` by ${getPlayerName(ball.fielder_id)}`;
+                                            }
+                                        }
+                                        if (ball.commentary) commText = ball.commentary; // custom override
+
+                                        let rowClass = "p-4 transition-colors flex gap-4 border-b border-gray-100";
+                                        if (ball.is_wicket) rowClass += " bg-red-50";
+                                        else if (ball.runs_scored === 4) rowClass += " bg-blue-50";
+                                        else if (ball.runs_scored === 6) rowClass += " bg-purple-50";
+                                        else rowClass += " hover:bg-gray-50 bg-white";
+
+                                        return (
+                                            <div key={ball.id} className={rowClass}>
+                                                <div className="text-gray-900 font-mono font-bold w-12 text-sm pt-1">{ball.over_number}.{ball.ball_number}</div>
+                                                {/* Avatar */}
+                                                <div className="hidden sm:block">
+                                                    <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0">
+                                                        <img
+                                                            src={getImageUrl(bowler?.image_path || bowler?.image_url || bowler?.image)}
+                                                            alt={bowlerName}
+                                                            className="w-full h-full object-cover"
+                                                            onError={(e) => e.target.src = 'https://via.placeholder.com/40?text=' + (bowlerName?.charAt(0) || 'B')}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="text-sm font-bold text-gray-800">{commText}</div>
+                                                    {/* Auto-gen text if custom empty? */}
+                                                    {!ball.commentary && (
+                                                        <div className="text-xs text-gray-400 mt-1">
+                                                            {ball.runs_scored === 4 ? 'Boundary to the fence.' : ball.runs_scored === 6 ? 'Maximum!' : ''}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-col gap-1 items-end">
+                                                    {ball.runs_scored === 4 && <div className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-bold w-fit border border-blue-200">FOUR</div>}
+                                                    {ball.runs_scored === 6 && <div className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-bold w-fit border border-purple-200">SIX</div>}
+                                                    {ball.is_wicket && <div className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-bold w-fit border border-red-200">OUT</div>}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                })}
+                            </div>
+                        </div>
+                    )
+                }
+
+                {
+                    activeTab === 'summary' && (
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
+                            <h2 className="text-3xl font-black text-gray-800 mb-2">Match Summary</h2>
+                            <div className="flex items-center justify-center gap-4 text-gray-500 mb-8 font-medium">
+                                <div className="flex items-center gap-1.5">
+                                    <FiMapPin className="text-gray-400" />
+                                    <span>{fixture.venue}</span>
+                                </div>
+                                <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                                <div className="flex items-center gap-1.5">
+                                    <FiCalendar className="text-gray-400" />
+                                    <span>{new Date(fixture.match_date).toDateString()}</span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-8 max-w-2xl mx-auto">
+                                <div className="p-6 bg-blue-50 rounded-2xl flex flex-col items-center">
+                                    <div className="w-24 h-24 rounded-full bg-white overflow-hidden mb-4 border border-blue-100 shadow-md">
+                                        <img
+                                            src={getImageUrl(fixture.Team1?.image_path || fixture.Team1?.logo_url || fixture.Team1?.image)}
+                                            alt={fixture.Team1?.name}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => e.target.src = 'https://via.placeholder.com/60?text=' + (fixture.Team1?.short_name || 'T1')}
+                                        />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-deep-blue mb-2">{fixture.Team1?.name}</h3>
+                                    <p className="text-3xl font-black">{team1Score?.runs}/{team1Score?.wickets}</p>
+                                    <p className="text-gray-500">{team1Score?.overs} Overs</p>
+                                </div>
+                                <div className="p-6 bg-yellow-50 rounded-2xl flex flex-col items-center">
+                                    <div className="w-24 h-24 rounded-full bg-white overflow-hidden mb-4 border border-yellow-100 shadow-md">
+                                        <img
+                                            src={getImageUrl(fixture.Team2?.image_path || fixture.Team2?.logo_url || fixture.Team2?.image)}
+                                            alt={fixture.Team2?.name}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => e.target.src = 'https://via.placeholder.com/60?text=' + (fixture.Team2?.short_name || 'T2')}
+                                        />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-yellow-700 mb-2">{fixture.Team2?.name}</h3>
+                                    <p className="text-3xl font-black">{team2Score?.runs}/{team2Score?.wickets}</p>
+                                    <p className="text-gray-500">{team2Score?.overs} Overs</p>
+                                </div>
+                            </div>
+
+                            <div className="mt-12">
+                                <h4 className="font-bold text-gray-400 uppercase text-sm mb-4">Result</h4>
+                                {(() => {
+                                    let resultText = fixture.result_description;
+
+                                    if (fixture.status === 'Completed' && !resultText && summary) {
+                                        // Fallback Check in UI
+                                        const target = summary.score1.runs + 1;
+                                        const currentRuns = summary.score2.runs;
+                                        const currentWickets = summary.score2.wickets;
+
+                                        // Check Winner
+                                        if (currentRuns >= target) {
+                                            // Batting 2nd Won
+                                            const battingSecondTeamId = (fixture.toss_decision === 'Bat' && fixture.toss_winner_id === fixture.team1_id) ? fixture.team2_id :
+                                                (fixture.toss_decision === 'Bowl' && fixture.toss_winner_id === fixture.team1_id) ? fixture.team1_id :
+                                                    (fixture.toss_decision === 'Bat' && fixture.toss_winner_id === fixture.team2_id) ? fixture.team1_id : fixture.team2_id;
+
+                                            const battingSecondTeamName = battingSecondTeamId === fixture.Team1.id ? fixture.Team1.name : fixture.Team2.name;
+                                            const wicketsLeft = 10 - currentWickets;
+                                            resultText = `${battingSecondTeamName} won by ${wicketsLeft} wickets`;
                                         } else {
-                                            resultText = "Match Tied";
+                                            // Batting 1st Won (or Tie)
+                                            if (currentRuns < summary.score1.runs) {
+                                                const runDiff = summary.score1.runs - currentRuns;
+                                                const battingFirstTeamId = (fixture.toss_decision === 'Bat' && fixture.toss_winner_id === fixture.team1_id) ? fixture.team1_id :
+                                                    (fixture.toss_decision === 'Bowl' && fixture.toss_winner_id === fixture.team1_id) ? fixture.team2_id :
+                                                        (fixture.toss_decision === 'Bat' && fixture.toss_winner_id === fixture.team2_id) ? fixture.team2_id : fixture.team1_id;
+
+                                                const battingFirstTeamName = battingFirstTeamId === fixture.Team1.id ? fixture.Team1.name : fixture.Team2.name;
+                                                resultText = `${battingFirstTeamName} won by ${runDiff} runs`;
+                                            } else {
+                                                resultText = "Match Tied";
+                                            }
                                         }
                                     }
-                                }
 
-                                return fixture.status === 'Completed' ? (
-                                    <p className="text-2xl font-bold text-green-600">{resultText || 'Match Completed'}</p>
-                                ) : (
-                                    <p className="text-xl font-bold text-blue-500 animate-pulse">Match in Progress</p>
-                                );
-                            })()}
-                        </div>
-
-                        {/* Player of the Match Display */}
-                        {fixture.status === 'Completed' && fixture.player_of_match_id && (
-                            <div className="mt-8 bg-gradient-to-r from-yellow-50 to-orange-50 p-6 rounded-xl border border-yellow-100 flex flex-col items-center">
-                                <h5 className="text-xs font-bold text-yellow-600 uppercase tracking-widest mb-2">Player of the Match</h5>
-                                {(() => {
-                                    const allPlayers = [
-                                        ...(fixture.Team1?.Players || []),
-                                        ...(fixture.Team2?.Players || [])
-                                    ];
-                                    const potm = allPlayers.find(p => p.id === fixture.player_of_match_id);
-
-                                    return potm ? (
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-16 h-16 rounded-full bg-white border-2 border-yellow-400 overflow-hidden shadow-sm">
-                                                <img
-                                                    src={getImageUrl(potm.image_path || potm.image)}
-                                                    alt={potm.name}
-                                                    className="w-full h-full object-cover"
-                                                    onError={(e) => e.target.src = 'https://via.placeholder.com/60?text=' + potm.name.charAt(0)}
-                                                />
-                                            </div>
-                                            <div className="text-left">
-                                                <p className="text-lg font-black text-gray-800">{potm.name}</p>
-                                                <p className="text-sm font-bold text-gray-500">{potm.role || 'Player'}</p>
-                                            </div>
-                                        </div>
-                                    ) : <p className="text-sm font-medium text-gray-500">Player data loading...</p>;
+                                    return fixture.status === 'Completed' ? (
+                                        <p className="text-2xl font-bold text-green-600">{resultText || 'Match Completed'}</p>
+                                    ) : (
+                                        <p className="text-xl font-bold text-blue-500 animate-pulse">Match in Progress</p>
+                                    );
                                 })()}
                             </div>
-                        )}
-                    </div>
-                )}
-            </div>
+
+                            {/* Player of the Match Display */}
+                            {fixture.status === 'Completed' && fixture.player_of_match_id && (
+                                <div className="mt-8 bg-gradient-to-r from-yellow-50 to-orange-50 p-6 rounded-xl border border-yellow-100 flex flex-col items-center">
+                                    <h5 className="text-xs font-bold text-yellow-600 uppercase tracking-widest mb-2">Player of the Match</h5>
+                                    {(() => {
+                                        const allPlayers = [
+                                            ...(fixture.Team1?.Players || []),
+                                            ...(fixture.Team2?.Players || [])
+                                        ];
+                                        const potm = allPlayers.find(p => p.id === fixture.player_of_match_id);
+
+                                        return potm ? (
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-16 h-16 rounded-full bg-white border-2 border-yellow-400 overflow-hidden shadow-sm">
+                                                    <img
+                                                        src={getImageUrl(potm.image_path || potm.image)}
+                                                        alt={potm.name}
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => e.target.src = 'https://via.placeholder.com/60?text=' + potm.name.charAt(0)}
+                                                    />
+                                                </div>
+                                                <div className="text-left">
+                                                    <p className="text-lg font-black text-gray-800">{potm.name}</p>
+                                                    <p className="text-sm font-bold text-gray-500">{potm.role || 'Player'}</p>
+                                                </div>
+                                            </div>
+                                        ) : <p className="text-sm font-medium text-gray-500">Player data loading...</p>;
+                                    })()}
+                                </div>
+                            )}
+                        </div>
+                    )
+                }
+            </div >
 
             {/* Modals ... (Confirm, Toss, Wicket - Same as before) */}
-            <AnimatePresence>
+            < AnimatePresence >
                 {tossModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
@@ -1500,7 +1517,7 @@ const MatchScoring = () => {
                         </motion.div>
                     </div>
                 )}
-            </AnimatePresence>
+            </AnimatePresence >
 
             <ConfirmationModal
                 isOpen={ballConfirmOpen}

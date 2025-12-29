@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import api from '../api/axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiUsers, FiSearch, FiX, FiInfo, FiFilter } from 'react-icons/fi';
+import { FiUsers, FiSearch, FiX, FiInfo, FiFilter, FiCpu } from 'react-icons/fi';
+import { findSimilarPlayers } from '../utils/AIModel';
 
 
 const PlayerComparison = () => {
@@ -20,6 +21,7 @@ const PlayerComparison = () => {
     // Context State
     const [auctions, setAuctions] = useState([]);
     const [selectedAuction, setSelectedAuction] = useState('');
+    const [allPlayers, setAllPlayers] = useState([]); // [NEW] For AI Clustering
 
     // Comparison Data (Stats)
     const [data, setData] = useState(null);
@@ -41,6 +43,14 @@ const PlayerComparison = () => {
             console.error("Failed to load auctions", err);
         }
     };
+
+    useEffect(() => {
+        if (selectedAuction) {
+            api.get(`/players/auction/${selectedAuction}`).then(res => {
+                setAllPlayers(res.data.players || []);
+            });
+        }
+    }, [selectedAuction]);
 
     // Search Effects
     useEffect(() => {
@@ -134,10 +144,10 @@ const PlayerComparison = () => {
 
                 {/* Auction Selector */}
                 <div className="flex justify-center mb-8">
-                    <div className="relative w-full md:w-80">
+                    <div className="relative w-full md:w-auto md:min-w-[300px]">
                         <FiFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                         <select
-                            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm font-medium text-gray-700"
+                            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none shadow-sm font-medium text-gray-700 text-lg"
                             value={selectedAuction}
                             onChange={(e) => {
                                 setSelectedAuction(e.target.value);
@@ -286,6 +296,62 @@ const PlayerComparison = () => {
                                 <div className="font-bold text-yellow-700">Price</div>
                                 <div className="font-mono font-bold text-gray-800 text-xl">{data.p1.price}</div>
                                 <div className="font-mono font-bold text-gray-800 text-xl">{data.p2.price}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                )}
+
+                {/* AI Similarity Engine */}
+                {data && !loading && (data.p1 || data.p2) && (
+                    <div className="mt-8 bg-gradient-to-br from-indigo-900 to-violet-900 rounded-3xl p-8 text-white relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-12 opacity-10">
+                            <FiCpu size={200} />
+                        </div>
+                        <div className="relative z-10">
+                            <h3 className="text-2xl font-black flex items-center gap-3 mb-6">
+                                <FiCpu className="text-cyan-400" /> AI Similarity Engine
+                            </h3>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                                {data.p1 && (
+                                    <div>
+                                        <p className="font-bold text-indigo-200 mb-4 uppercase tracking-widest text-xs">Players like {data.p1.name}</p>
+                                        <div className="space-y-3">
+                                            {findSimilarPlayers(data.p1, allPlayers, 3).map((p) => (
+                                                <div key={p.id} className="bg-white/10 p-3 rounded-xl flex items-center gap-3 hover:bg-white/20 transition-colors cursor-pointer" onClick={() => setPlayer2(p)}>
+                                                    <div className="w-10 h-10 rounded-full bg-white/20 overflow-hidden">
+                                                        {p.image_path ? <img src={getImageUrl(p.image_path)} className="w-full h-full object-cover" /> : <div className="flex h-full items-center justify-center"><FiUsers /></div>}
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-sm">{p.name}</div>
+                                                        <div className="text-xs text-cyan-300">{(p.similarity * 100).toFixed(0)}% Match</div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {findSimilarPlayers(data.p1, allPlayers, 3).length === 0 && <p className="text-white/40 italic text-sm">No similar players found</p>}
+                                        </div>
+                                    </div>
+                                )}
+                                {data.p2 && (
+                                    <div>
+                                        <p className="font-bold text-indigo-200 mb-4 uppercase tracking-widest text-xs">Players like {data.p2.name}</p>
+                                        <div className="space-y-3">
+                                            {findSimilarPlayers(data.p2, allPlayers, 3).map((p) => (
+                                                <div key={p.id} className="bg-white/10 p-3 rounded-xl flex items-center gap-3 hover:bg-white/20 transition-colors cursor-pointer" onClick={() => setPlayer1(p)}>
+                                                    <div className="w-10 h-10 rounded-full bg-white/20 overflow-hidden">
+                                                        {p.image_path ? <img src={getImageUrl(p.image_path)} className="w-full h-full object-cover" /> : <div className="flex h-full items-center justify-center"><FiUsers /></div>}
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-sm">{p.name}</div>
+                                                        <div className="text-xs text-cyan-300">{(p.similarity * 100).toFixed(0)}% Match</div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {findSimilarPlayers(data.p2, allPlayers, 3).length === 0 && <p className="text-white/40 italic text-sm">No similar players found</p>}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

@@ -26,6 +26,7 @@ exports.getAuctionAnalytics = async (req, res) => {
         const budgetStats = teams.map(team => {
             const spent = team.Players.reduce((sum, p) => sum + (p.sold_price || 0), 0);
             return {
+                id: team.id,
                 name: team.short_name || team.name,
                 full_name: team.name,
                 image_path: team.image_path,
