@@ -51,29 +51,52 @@ exports.getTeamsByAuction = async (req, res) => {
             whereClause.name = { [Op.like]: `%${search}%` };
         }
 
+        const { AuctionPlayer, Player } = require('../models');
+
         const { count, rows } = await Team.findAndCountAll({
             where: whereClause,
             include: [{
-                model: Player,
-                as: 'Players', // Ensure this matches your association alias
-                required: false, // Left join, so teams without players are still returned
-                where: { status: 'Sold' } // Only fetch SOLD players? Or all? User said "bidded players". Let's fetch Sold.
-                // Actually if I put where in include, teams with no sold players might be excluded if I don't set required: false.
-                // But required: false with where clause on included model...
-                // Better to fetch all associated players and filter in frontend? Or strict filter "Sold".
-                // Let's just fetch ALL players associated (if association is set by team_id).
-                // Usually players table has team_id.
+                model: AuctionPlayer,
+                // as: 'SoldPlayers', // Optional, if you add alias in index.js
+                required: false, // Left join
+                where: { status: 'Sold' },
+                include: [{
+                    model: Player,
+                    attributes: ['id', 'name', 'role', 'image_path'] // Select needed fields
+                }]
             }],
+            // Actually if I put where in include, teams with no sold players might be excluded if I don't set required: false.
+            // But required: false with where clause on included model...
+            // Better to fetch all associated players and filter in frontend? Or strict filter "Sold".
+            // Let's just fetch ALL players associated (if association is set by team_id).
+            // Usually players table has team_id.
+            // Usually players table has team_id.
             limit,
             offset,
             order: [['name', 'ASC']]
+        });
+
+        // Transform headers to match frontend expectation (Team -> Players)
+        const teams = rows.map(team => {
+            const teamData = team.toJSON();
+            if (teamData.AuctionPlayers) {
+                teamData.Players = teamData.AuctionPlayers.map(ap => ({
+                    ...ap.Player,
+                    sold_price: ap.sold_price,
+                    image_path: ap.image_path || ap.Player.image_path // Prioritize Auction Image
+                }));
+                // delete teamData.AuctionPlayers; // Keep it if needed for debug, or delete
+            } else {
+                teamData.Players = [];
+            }
+            return teamData;
         });
 
         res.json({
             totalItems: count,
             totalPages: Math.ceil(count / limit),
             currentPage: page,
-            teams: rows
+            teams: teams
         });
     } catch (error) {
         console.error("Error fetching teams:", error);

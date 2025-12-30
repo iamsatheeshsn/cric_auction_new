@@ -39,6 +39,7 @@ function App() {
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/auctions" element={<ProtectedRoute><Auctions /></ProtectedRoute>} />
             <Route path="/teams/:auctionId" element={<ProtectedRoute><Teams /></ProtectedRoute>} />
+            <Route path="/players" element={<ProtectedRoute><Players /></ProtectedRoute>} />
             <Route path="/players/:auctionId" element={<ProtectedRoute><Players /></ProtectedRoute>} />
             <Route path="/fixtures/:auctionId" element={<ProtectedRoute><Fixtures /></ProtectedRoute>} />
             <Route path="/auction-room/:auctionId" element={<ProtectedRoute><AuctionRoom /></ProtectedRoute>} />

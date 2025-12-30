@@ -140,8 +140,8 @@ const BroadcastView = () => {
                         </p>
                     )}
                     <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded uppercase">CRR: {(score?.runs / Math.max(0.1, score?.overs || 0)).toFixed(2)}</span>
-                        {target && <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded uppercase">RRR: {((target - score?.runs) / Math.max(0.1, (fixture.total_overs || 20) - (score?.overs || 0))).toFixed(2)}</span>}
+                        <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded uppercase">CRR: {(score?.runs * 6 / Math.max(1, score?.legalBalls || 1)).toFixed(2)}</span>
+                        {target && <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded uppercase">RRR: {((target - score?.runs) * 6 / Math.max(1, ((fixture.total_overs || 20) * 6) - (score?.legalBalls || 0))).toFixed(2)}</span>}
                     </div>
 
                     {/* Win Prob Small */}

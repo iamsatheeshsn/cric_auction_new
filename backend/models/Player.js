@@ -44,7 +44,7 @@ module.exports = (sequelize) => {
             type: DataTypes.STRING,
             allowNull: true
         },
-        notes: {
+        notes: { // Global notes (medical etc)
             type: DataTypes.TEXT,
             allowNull: true
         },
@@ -61,7 +61,8 @@ module.exports = (sequelize) => {
             allowNull: false // User requested *
         },
 
-        // Payment Info
+        // Payment Info (Assuming global registration payment, or maybe move to AuctionPlayer? 
+        // For now, keeping here as "Registration" usually implies platform registration)
         payment_transaction_id: {
             type: DataTypes.STRING,
             allowNull: true
@@ -69,39 +70,6 @@ module.exports = (sequelize) => {
         payment_screenshot_path: {
             type: DataTypes.STRING,
             allowNull: true
-        },
-
-        // Auction Info
-        is_owner: { // Is Owner/Icon?
-            type: DataTypes.STRING, // Storing as string to handle Dropdown values if needed, or Boolean
-            defaultValue: 'No'
-        },
-        points: { // Given Points/Base Price
-            type: DataTypes.INTEGER,
-            defaultValue: 0
-        },
-
-        // System Fields
-        auction_id: {
-            type: DataTypes.INTEGER,
-            allowNull: false
-        },
-        team_id: {
-            type: DataTypes.INTEGER,
-            allowNull: true
-        },
-        status: { // Sold, Unsold, Available
-            type: DataTypes.STRING,
-            defaultValue: 'Available'
-        },
-        sold_price: {
-            type: DataTypes.INTEGER,
-            defaultValue: 0
-        },
-        order_id: {
-            type: DataTypes.INTEGER,
-            allowNull: true,
-            defaultValue: null
         }
     });
 

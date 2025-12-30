@@ -73,7 +73,7 @@ const Dashboard = () => {
                 </div>
 
                 {/* KPI Cards Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <motion.div variants={itemVariants}>
                         <StatsCard
                             title="Players Sold"
@@ -84,6 +84,17 @@ const Dashboard = () => {
                             borderClass="border-blue-500"
                         />
                     </motion.div>
+
+                    <motion.div variants={itemVariants}>
+                        <StatsCard
+                            title="Total Spent"
+                            value={formatCurrency(stats?.counts?.totalSpent || 0)}
+                            icon={FiDollarSign}
+                            colorClass="text-green-600 dark:text-green-400"
+                            borderClass="border-green-500"
+                        />
+                    </motion.div>
+
                     <motion.div variants={itemVariants}>
                         <StatsCard
                             title="Active Teams"
@@ -93,6 +104,7 @@ const Dashboard = () => {
                             borderClass="border-purple-500"
                         />
                     </motion.div>
+
                     <motion.div variants={itemVariants}>
                         <StatsCard
                             title="Total Auctions"
@@ -107,42 +119,69 @@ const Dashboard = () => {
                 {/* Charts Section */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Role Distribution Chart */}
-                    <motion.div variants={itemVariants} className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-white/10">
-                        <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
-                            <FiUsers className="text-deep-blue dark:text-blue-400" />
-                            Player Roles
-                        </h3>
-                        <div className="flex justify-center">
-                            <DonutChart data={stats?.charts?.roles} size={220} />
+                    <motion.div variants={itemVariants} className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-gray-100 dark:border-white/5 transition-all hover:shadow-xl">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                                <FiUsers className="text-deep-blue dark:text-blue-400" />
+                                Player Roles
+                            </h3>
+                            <span className="text-xs font-medium text-gray-500 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-full">Distribution</span>
+                        </div>
+                        <div className="flex justify-center h-64 items-center">
+                            {stats?.charts?.roles?.length > 0 ? (
+                                <DonutChart data={stats?.charts?.roles} size={220} />
+                            ) : (
+                                <p className="text-gray-400">No data available</p>
+                            )}
                         </div>
                     </motion.div>
 
                     {/* Tournament Progress Chart */}
-                    <motion.div variants={itemVariants} className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-white/10">
-                        <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
-                            <FiActivity className="text-deep-blue dark:text-blue-400" />
-                            Tournament Progress
-                        </h3>
-                        <div className="flex justify-center">
-                            <DonutChart data={stats?.charts?.matchStats} size={220} />
+                    <motion.div variants={itemVariants} className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-gray-100 dark:border-white/5 transition-all hover:shadow-xl">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                                <FiActivity className="text-deep-blue dark:text-blue-400" />
+                                Match Status
+                            </h3>
+                            <span className="text-xs font-medium text-gray-500 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-full">Overview</span>
+                        </div>
+                        <div className="flex justify-center h-64 items-center">
+                            {stats?.charts?.matchStats?.length > 0 ? (
+                                <DonutChart data={stats?.charts?.matchStats} size={220} />
+                            ) : (
+                                <p className="text-gray-400">No matches scheduled</p>
+                            )}
                         </div>
                     </motion.div>
                 </div>
 
-                {/* Recent Activity / Quick Actions (Optional placeholder for future expansion) */}
+                {/* Recent Activity / Quick Actions */}
                 {stats?.recentAuctions?.length > 0 && (
-                    <motion.div variants={itemVariants} className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-white/10">
-                        <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Recent Auctions</h3>
-                        <div className="space-y-3">
-                            {stats.recentAuctions.map(auction => (
-                                <div key={auction.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-white/5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
-                                    <div>
-                                        <h4 className="font-bold text-gray-800 dark:text-white text-sm">{auction.name}</h4>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(auction.createdAt).toLocaleDateString()}</p>
+                    <motion.div variants={itemVariants} className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-gray-100 dark:border-white/5">
+                        <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
+                            <FiCalendar className="text-indigo-500" />
+                            Recent Auctions
+                        </h3>
+                        <div className="space-y-4">
+                            {stats.recentAuctions.map((auction, idx) => (
+                                <div key={auction.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-xl hover:bg-white hover:shadow-md dark:hover:bg-white/10 transition-all border border-transparent hover:border-gray-100 dark:hover:border-white/10 group">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-white shadow-sm ${idx % 2 === 0 ? 'bg-gradient-to-br from-blue-400 to-blue-600' : 'bg-gradient-to-br from-purple-400 to-purple-600'}`}>
+                                            {auction.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-gray-800 dark:text-white text-sm group-hover:text-deep-blue dark:group-hover:text-blue-400 transition-colors">{auction.name}</h4>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">Created: {new Date(auction.createdAt).toLocaleDateString()}</p>
+                                        </div>
                                     </div>
-                                    <span className={`text-xs px-2 py-1 rounded font-bold ${auction.status === 'Live' ? 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-300' : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'}`}>
-                                        {auction.status || 'Draft'}
-                                    </span>
+                                    <div className="flex items-center gap-3">
+                                        <span className={`text-xs px-3 py-1 rounded-full font-bold border ${auction.status === 'Live' ? 'bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/30 animate-pulse' :
+                                                auction.status === 'Completed' ? 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/20 dark:text-green-300 dark:border-green-900/30' :
+                                                    'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-700'
+                                            }`}>
+                                            {auction.status || 'Draft'}
+                                        </span>
+                                    </div>
                                 </div>
                             ))}
                         </div>

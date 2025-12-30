@@ -205,11 +205,19 @@ const AuctionRoom = () => {
     const handleUnsold = async () => {
         if (!currentPlayer) return;
         try {
-            await api.post(`/players/${currentPlayer.id}/unsold`);
+            await api.put(`/players/${currentPlayer.id}/unsold`, { auction_id: auctionId });
+            setLastAction({ type: 'UNSOLD', player: currentPlayer });
+
+            // Update lists
+            setUnsoldPlayers(prev => prev.filter(p => p.id !== currentPlayer.id));
+            setUnsoldPassedPlayers(prev => [currentPlayer, ...prev]);
+
             setCurrentPlayer(null);
-            await loadData();
+            setSearchTerm('');
+            toast.info("Player Unsold");
         } catch (error) {
             console.error(error);
+            toast.error("Failed to mark unsold");
         }
     };
 

@@ -7,6 +7,7 @@ import { useParams, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import ConfirmationModal from '../components/ConfirmationModal';
 import PlayerInfoModal from '../components/PlayerInfoModal';
+import PlayerRegistrationModal from '../components/PlayerRegistrationModal';
 
 const Players = () => {
     const { auctionId } = useParams();
@@ -19,6 +20,7 @@ const Players = () => {
 
     const [auction, setAuction] = useState(null);
     const [showModal, setShowModal] = useState(false);
+    const [showRegisterModal, setShowRegisterModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
     const [editId, setEditId] = useState(null);
     const [selectedPlayer, setSelectedPlayer] = useState(null);
@@ -36,9 +38,11 @@ const Players = () => {
     const [statusFilter, setStatusFilter] = useState('');
 
     useEffect(() => {
-        fetchAuctionDetails();
+        if (auctionId) {
+            fetchAuctionDetails();
+            fetchTeams();
+        }
         fetchPlayers();
-        fetchTeams();
     }, [auctionId, currentPage, search, roleFilter, statusFilter, limit]);
 
     // Handle print completion
@@ -65,23 +69,29 @@ const Players = () => {
 
     const fetchPlayers = async () => {
         try {
-            // Add timestamp to prevent caching
-            const res = await api.get(`/players/auction/${auctionId}?page=${currentPage}&limit=${limit}&search=${search}&role=${roleFilter}&status=${statusFilter}&_t=${Date.now()}`);
+            let res;
+            if (auctionId) {
+                // Auction Specific Players
+                res = await api.get(`/players/auction/${auctionId}?page=${currentPage}&limit=${limit}&search=${search}&role=${roleFilter}&status=${statusFilter}&_t=${Date.now()}`);
 
-            // Sort by order_id (PID), fallback to ID
-            // Sort by Status then Order ID
-            const statusPriority = { 'Sold': 1, 'Unsold': 2, 'Available': 3 };
-            const sortedPlayers = (res.data.players || []).sort((a, b) => {
-                const statusA = statusPriority[a.status] || 4;
-                const statusB = statusPriority[b.status] || 4;
-                if (statusA !== statusB) return statusA - statusB;
+                // Sort by order_id (PID), fallback to ID
+                const statusPriority = { 'Sold': 1, 'Unsold': 2, 'Available': 3 };
+                const sortedPlayers = (res.data.players || []).sort((a, b) => {
+                    const statusA = statusPriority[a.status] || 4;
+                    const statusB = statusPriority[b.status] || 4;
+                    if (statusA !== statusB) return statusA - statusB;
 
-                const pidA = a.order_id || 999999;
-                const pidB = b.order_id || 999999;
-                return pidA - pidB || parseInt(a.id) - parseInt(b.id);
-            });
+                    const pidA = a.order_id || 999999;
+                    const pidB = b.order_id || 999999;
+                    return pidA - pidB || parseInt(a.id) - parseInt(b.id);
+                });
+                setPlayers(sortedPlayers);
+            } else {
+                // Global Players
+                res = await api.get(`/players?page=${currentPage}&limit=${limit}&search=${search}&role=${roleFilter}`);
+                setPlayers(res.data.players || []);
+            }
 
-            setPlayers(sortedPlayers);
             setTotalPages(res.data.totalPages);
 
             if (printPendingRef.current) {
@@ -120,7 +130,7 @@ const Players = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         const data = new FormData();
-        data.append('auction_id', auctionId);
+        if (auctionId) data.append('auction_id', auctionId);
         Object.keys(formData).forEach(key => {
             if (formData[key] !== null) {
                 data.append(key, formData[key]);
@@ -180,7 +190,7 @@ const Players = () => {
             is_owner: player.is_owner ? 'true' : 'false',
             team_id: playerTeamId,
             points: player.points,
-            jersey_no: player.jersey_no,
+            jersey_no: player.jersey_no || '',
             player_link: player.player_link,
             image: null,
             payment_screenshot: null
@@ -214,17 +224,21 @@ const Players = () => {
         <Layout>
             <div className="flex flex-col gap-4 mb-8 print:hidden">
                 <div className="flex gap-4">
-                    <Link to="/auctions" className="text-gray-500 hover:text-deep-blue flex items-center gap-2 w-fit">
-                        <FiArrowLeft /> Back to Auctions
-                    </Link>
-                    <Link to={`/teams/${auctionId}`} className="text-gray-500 hover:text-deep-blue flex items-center gap-2 w-fit">
-                        Example: Teams
-                    </Link>
+                    {auctionId && (
+                        <>
+                            <Link to="/auctions" className="text-gray-500 hover:text-deep-blue flex items-center gap-2 w-fit">
+                                <FiArrowLeft /> Back to Auctions
+                            </Link>
+                            <Link to={`/teams/${auctionId}`} className="text-gray-500 hover:text-deep-blue flex items-center gap-2 w-fit">
+                                Example: Teams
+                            </Link>
+                        </>
+                    )}
                 </div>
 
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-800">Players</h1>
+                        <h1 className="text-2xl font-bold text-gray-800">{auctionId ? 'Players' : 'Global Player Pool'}</h1>
                         {auction && <p className="text-gray-500">for {auction.name}</p>}
                     </div>
 
@@ -247,16 +261,19 @@ const Players = () => {
                             <option value="All Rounder">All Rounder</option>
                             <option value="Wicket Keeper">Wicket Keeper</option>
                         </select>
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-                            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-deep-blue text-sm bg-white"
-                        >
-                            <option value="">All Status</option>
-                            <option value="Available">Available</option>
-                            <option value="Unsold">Unsold</option>
-                            <option value="Sold">Sold</option>
-                        </select>
+
+                        {auctionId && (
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-deep-blue text-sm bg-white"
+                            >
+                                <option value="">All Status</option>
+                                <option value="Available">Available</option>
+                                <option value="Unsold">Unsold</option>
+                                <option value="Sold">Sold</option>
+                            </select>
+                        )}
 
                         <button
                             onClick={handlePrintAll}
@@ -266,13 +283,22 @@ const Players = () => {
                             <FiPrinter size={20} />
                         </button>
 
-                        {auction?.status === 'Upcoming' && (
-                            <button
-                                onClick={() => { resetForm(); setShowModal(true); }}
-                                className="flex items-center gap-2 bg-deep-blue text-white px-6 py-2 rounded-lg hover:bg-blue-900 transition-colors shadow-md ml-2"
-                            >
-                                <FiPlus /> Add Player
-                            </button>
+                        {(auction?.status === 'Upcoming' || !auctionId) && (
+                            auctionId ? (
+                                <button
+                                    onClick={() => setShowRegisterModal(true)}
+                                    className="flex items-center gap-2 bg-deep-blue text-white px-6 py-2 rounded-lg hover:bg-blue-900 transition-colors shadow-md ml-2"
+                                >
+                                    <FiPlus /> Register Player
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => { resetForm(); setShowModal(true); }}
+                                    className="flex items-center gap-2 bg-deep-blue text-white px-6 py-2 rounded-lg hover:bg-blue-900 transition-colors shadow-md ml-2"
+                                >
+                                    <FiPlus /> Add Player
+                                </button>
+                            )
                         )}
                     </div>
                 </div>
@@ -280,7 +306,7 @@ const Players = () => {
 
             {/* Print Only Header */}
             <div className="hidden print:block mb-6">
-                <h1 className="text-2xl font-bold text-gray-800">Players List</h1>
+                <h1 className="text-2xl font-bold text-gray-800">{auctionId ? 'Players List' : 'All Players'}</h1>
                 {auction && <p className="text-gray-500">{auction.name}</p>}
             </div>
 
@@ -290,33 +316,35 @@ const Players = () => {
                         <FiUser className="text-4xl text-gray-300" />
                     </div>
                     <h3 className="text-xl font-bold text-gray-700 mb-2">No Players Found</h3>
-                    <p className="text-gray-500 max-w-md">Add players to this auction using the "Add Player" button above, or import them.</p>
+                    <p className="text-gray-500 max-w-md">Add players using the "Add Player" button above.</p>
                 </div>
             ) : (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden print:shadow-none print:border-0">
                     <table className="w-full text-left">
                         <thead className="bg-gray-50 border-b border-gray-100 print:bg-white print:border-gray-300">
                             <tr>
-                                <th className="p-4 text-xs font-bold text-gray-500 uppercase">PID</th>
+                                {auctionId && <th className="p-4 text-xs font-bold text-gray-500 uppercase">PID</th>}
                                 <th className="p-4 text-xs font-bold text-gray-500 uppercase">Player</th>
                                 <th className="p-4 text-xs font-bold text-gray-500 uppercase">Role</th>
-                                <th className="p-4 text-xs font-bold text-gray-500 uppercase">Team</th>
-                                <th className="p-4 text-xs font-bold text-gray-500 uppercase">Status</th>
+                                {auctionId && <th className="p-4 text-xs font-bold text-gray-500 uppercase">Team</th>}
+                                {auctionId && <th className="p-4 text-xs font-bold text-gray-500 uppercase">Status</th>}
                                 <th className="p-4 text-xs font-bold text-gray-500 uppercase print:hidden">Action</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 print:divide-gray-200">
                             {players.map((player, index) => (
                                 <tr key={player.id} className="hover:bg-gray-50 transition-colors print:hover:bg-transparent">
-                                    <td className="p-4 text-sm font-bold text-gray-400">
-                                        #{player.order_id || '-'}
-                                    </td>
+                                    {auctionId && (
+                                        <td className="p-4 text-sm font-bold text-gray-400">
+                                            #{player.order_id || '-'}
+                                        </td>
+                                    )}
                                     <td className="p-4 flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden print:border print:border-gray-200">
                                             {player.image_path ? (
                                                 <img src={`http://localhost:5000/${player.image_path.replace(/\\/g, '/')}`} className="w-full h-full object-cover" />
                                             ) : (
-                                                <FiUser className="w-full h-full p-2 text-gray-400" />
+                                                <div className="w-full h-full flex items-center justify-center bg-gray-100"><FiUser className="text-gray-400" /></div>
                                             )}
                                         </div>
                                         <div>
@@ -329,20 +357,33 @@ const Players = () => {
                                             <p className="text-xs text-gray-500">{player.mobile_number}</p>
                                         </div>
                                     </td>
-                                    <td className="p-4 text-sm text-gray-600">{player.role}</td>
-                                    <td className="p-4 text-sm text-gray-600 font-medium">
-                                        {player.Team ? player.Team.short_name : '-'}
+                                    <td className="p-4 text-sm text-gray-600">
+                                        <div className="font-semibold">{player.role}</div>
+                                        {player.stats && (
+                                            <div className="text-xs text-gray-500 mt-1 flex gap-2">
+                                                <span title="Matches">M: {player.stats.matches}</span> |
+                                                <span title="Runs">R: {player.stats.runs}</span> |
+                                                <span title="Wickets">W: {player.stats.wickets}</span>
+                                            </div>
+                                        )}
                                     </td>
-                                    <td className="p-4">
-                                        <span className={`text-xs font-bold px-2 py-1 rounded print:border print:border-gray-200 ${player.status === 'Sold' ? 'bg-green-100 text-green-700' :
-                                            player.status === 'Unsold' ? 'bg-red-100 text-red-700' :
-                                                'bg-blue-100 text-blue-700' // Available
-                                            }`}>
-                                            {player.status}
-                                        </span>
-                                    </td>
+                                    {auctionId && (
+                                        <>
+                                            <td className="p-4 text-sm text-gray-600 font-medium">
+                                                {player.Team ? player.Team.short_name : '-'}
+                                            </td>
+                                            <td className="p-4">
+                                                <span className={`text-xs font-bold px-2 py-1 rounded print:border print:border-gray-200 ${player.status === 'Sold' ? 'bg-green-100 text-green-700' :
+                                                    player.status === 'Unsold' ? 'bg-red-100 text-red-700' :
+                                                        'bg-blue-100 text-blue-700' // Available
+                                                    }`}>
+                                                    {player.status}
+                                                </span>
+                                            </td>
+                                        </>
+                                    )}
                                     <td className="p-4 flex gap-2 print:hidden">
-                                        {player.status !== 'Sold' && auction?.status === 'Upcoming' && (
+                                        {(player.status !== 'Sold' || !auctionId) && (auction?.status === 'Upcoming' || !auctionId) && (
                                             <>
                                                 <button onClick={() => handleEdit(player)} className="text-blue-400 hover:text-blue-600">
                                                     <FiEdit />
@@ -418,23 +459,23 @@ const Players = () => {
                                     </div>
                                     <div>
                                         <label className="label">Player Name *</label>
-                                        <input required name="name" value={formData.name} onChange={handleInputChange} className="input-field" />
+                                        <input required disabled={!!auctionId} name="name" value={formData.name} onChange={handleInputChange} className="input-field disabled:bg-gray-100 disabled:text-gray-500" />
                                     </div>
                                     <div>
                                         <label className="label">Father Name</label>
-                                        <input name="father_name" value={formData.father_name} onChange={handleInputChange} className="input-field" />
+                                        <input disabled={!!auctionId} name="father_name" value={formData.father_name} onChange={handleInputChange} className="input-field disabled:bg-gray-100 disabled:text-gray-500" />
                                     </div>
                                     <div>
                                         <label className="label">Date of Birth *</label>
-                                        <input required type="date" name="dob" value={formData.dob} onChange={handleInputChange} className="input-field" />
+                                        <input required disabled={!!auctionId} type="date" name="dob" value={formData.dob} onChange={handleInputChange} className="input-field disabled:bg-gray-100 disabled:text-gray-500" />
                                     </div>
                                     <div>
                                         <label className="label">Mobile No</label>
-                                        <input name="mobile_number" value={formData.mobile_number} onChange={handleInputChange} className="input-field" />
+                                        <input disabled={!!auctionId} name="mobile_number" value={formData.mobile_number} onChange={handleInputChange} className="input-field disabled:bg-gray-100 disabled:text-gray-500" />
                                     </div>
                                     <div>
                                         <label className="label">Preferred Jersey No</label>
-                                        <input name="jersey_no" value={formData.jersey_no} onChange={handleInputChange} className="input-field" />
+                                        <input disabled={!!auctionId} name="jersey_no" value={formData.jersey_no} onChange={handleInputChange} className="input-field disabled:bg-gray-100 disabled:text-gray-500" />
                                     </div>
 
                                     {/* Cricketing Info */}
@@ -442,7 +483,7 @@ const Players = () => {
 
                                     <div>
                                         <label className="label">Player Role *</label>
-                                        <select name="role" value={formData.role} onChange={handleInputChange} className="input-field">
+                                        <select disabled={!!auctionId} name="role" value={formData.role} onChange={handleInputChange} className="input-field disabled:bg-gray-100 disabled:text-gray-500">
                                             <option>Batsman</option>
                                             <option>Bowler</option>
                                             <option>All Rounder</option>
@@ -451,14 +492,14 @@ const Players = () => {
                                     </div>
                                     <div>
                                         <label className="label">Batting Type</label>
-                                        <select name="batting_type" value={formData.batting_type} onChange={handleInputChange} className="input-field">
+                                        <select disabled={!!auctionId} name="batting_type" value={formData.batting_type} onChange={handleInputChange} className="input-field disabled:bg-gray-100 disabled:text-gray-500">
                                             <option>Right Hand</option>
                                             <option>Left Hand</option>
                                         </select>
                                     </div>
                                     <div>
                                         <label className="label">Bowling Type</label>
-                                        <select name="bowling_type" value={formData.bowling_type} onChange={handleInputChange} className="input-field">
+                                        <select disabled={!!auctionId} name="bowling_type" value={formData.bowling_type} onChange={handleInputChange} className="input-field disabled:bg-gray-100 disabled:text-gray-500">
                                             <option>Right Arm Fast</option>
                                             <option>Right Arm Medium</option>
                                             <option>Right Arm Spin</option>
@@ -544,6 +585,14 @@ const Players = () => {
                 player={selectedPlayer}
                 isOpen={!!selectedPlayer}
                 onClose={() => setSelectedPlayer(null)}
+            />
+
+            {/* Registration Modal */}
+            <PlayerRegistrationModal
+                isOpen={showRegisterModal}
+                onClose={() => setShowRegisterModal(false)}
+                auctionId={auctionId}
+                onPlayerRegistered={fetchPlayers}
             />
         </Layout>
     );

@@ -19,9 +19,12 @@ router.put('/:id', upload.fields([
 
 // Get Players by Auction
 router.get('/auction/:auctionId', playerController.getPlayersByAuction);
+router.get('/', playerController.getAllPlayers); // Global Players Route
 router.get('/v2/auction/:auctionId', playerController.getPlayersByAuction); // V2 Route for debugging/bypassing cache
 
 // Auction Actions
+router.get('/unregistered/:auctionId', playerController.getUnregisteredPlayers);
+router.post('/register', playerController.registerPlayer);
 router.post('/regenerate-pids', playerController.regeneratePlayerIds);
 router.post('/:id/sold', playerController.markSold);
 router.post('/:id/unsold', playerController.markUnsold);

@@ -1,4 +1,4 @@
-const { Auction, Team, Player } = require('../models');
+const { Auction, Team, Player, AuctionPlayer } = require('../models');
 const { Op } = require('sequelize');
 
 // Create Auction
@@ -181,51 +181,45 @@ exports.copyAuctionData = async (req, res) => {
 
         // Copy Players
         if (includePlayers) {
-            // 1. Get existing players in target
-            const existingPlayers = await Player.findAll({
+            const { AuctionPlayer } = require('../models');
+
+            // 1. Get existing player links in target
+            const existingLinks = await AuctionPlayer.findAll({
                 where: { auction_id: targetAuctionId },
-                attributes: ['name', 'mobile_number'],
+                attributes: ['player_id'],
+                raw: true
+            });
+            const existingPlayerIds = new Set(existingLinks.map(l => l.player_id));
+
+            // 2. Get source player links
+            const sourceLinks = await AuctionPlayer.findAll({
+                where: { auction_id: sourceAuctionId },
                 raw: true
             });
 
-            // Create a Set of unique keys: "name|mobile" or just "name"
-            const existingPlayerKeys = new Set(existingPlayers.map(p => {
-                const mobile = p.mobile_number ? p.mobile_number.toString().trim() : '';
-                return `${p.name.trim().toLowerCase()}|${mobile}`;
-            }));
-
-            // 2. Get source players
-            const sourcePlayers = await Player.findAll({ where: { auction_id: sourceAuctionId }, raw: true });
-
-            if (sourcePlayers.length > 0) {
+            if (sourceLinks.length > 0) {
                 // Get current max order_id for target auction
-                const maxOrder = await Player.max('order_id', { where: { auction_id: targetAuctionId } }) || 0;
+                const maxOrder = await AuctionPlayer.max('order_id', { where: { auction_id: targetAuctionId } }) || 0;
                 let nextOrder = maxOrder + 1;
 
                 // 3. Filter out duplicates
-                const newPlayers = sourcePlayers
-                    .filter(player => {
-                        const mobile = player.mobile_number ? player.mobile_number.toString().trim() : '';
-                        const key = `${player.name.trim().toLowerCase()}|${mobile}`;
-                        return !existingPlayerKeys.has(key);
-                    })
-                    .map(player => ({
-                        ...player,
-                        id: undefined,
-                        createdAt: undefined,
-                        updatedAt: undefined,
+                const newLinks = sourceLinks
+                    .filter(link => !existingPlayerIds.has(link.player_id))
+                    .map(link => ({
                         auction_id: targetAuctionId,
-                        team_id: null,
-                        status: 'Available',
-                        sold_price: 0,
-                        order_id: nextOrder++ // Assign and increment
+                        player_id: link.player_id,
+                        order_id: nextOrder++,
+                        points: link.points || 0,
+                        status: 'Available', // Reset status for new auction
+                        is_owner: 'false',
+                        sold_price: 0
                     }));
 
-                if (newPlayers.length > 0) {
-                    await Player.bulkCreate(newPlayers);
+                if (newLinks.length > 0) {
+                    await AuctionPlayer.bulkCreate(newLinks);
                 }
-                playersCopied = newPlayers.length;
-                playersSkipped = sourcePlayers.length - newPlayers.length;
+                playersCopied = newLinks.length;
+                playersSkipped = sourceLinks.length - newLinks.length;
             }
         }
 
@@ -253,17 +247,42 @@ exports.getLiveAuctionData = async (req, res) => {
         const auction = await Auction.findByPk(id);
         if (!auction) return res.status(404).json({ message: 'Auction not found' });
 
-        // Get Last Sold Player
-        const lastSold = await Player.findOne({
+        // Get Last Sold Player via AuctionPlayer
+        const { AuctionPlayer } = require('../models');
+        const lastSoldEntry = await AuctionPlayer.findOne({
             where: { auction_id: id, status: 'Sold' },
             order: [['updatedAt', 'DESC']],
-            include: [{ model: Team, as: 'Team', attributes: ['name', 'short_name'] }]
+            include: [
+                { model: Player },
+                { model: Team }
+            ]
         });
+
+        // Transform for frontend expected format if needed, or send as is
+        // Transform Last Sold
+        const lastSold = lastSoldEntry ? {
+            ...lastSoldEntry.Player.toJSON(),
+            Team: lastSoldEntry.Team,
+            sold_price: lastSoldEntry.sold_price,
+            image_path: lastSoldEntry.image_path || lastSoldEntry.Player.image_path // Prioritize Auction Image
+        } : null;
 
         // Get Current Player (Explicitly set by Admin)
         let currentPlayer = null;
         if (auction.current_player_id) {
-            currentPlayer = await Player.findByPk(auction.current_player_id);
+            const player = await Player.findByPk(auction.current_player_id);
+            if (player) {
+                // Fetch Auction Specific Details (Image, etc.)
+                const auctionPlayer = await AuctionPlayer.findOne({
+                    where: { player_id: player.id, auction_id: id }
+                });
+
+                currentPlayer = {
+                    ...player.toJSON(),
+                    image_path: auctionPlayer?.image_path || player.image_path,
+                    points: auctionPlayer?.points || player.points || 0
+                };
+            }
         }
 
         // Live Bid Data (Stored in Auction Table)

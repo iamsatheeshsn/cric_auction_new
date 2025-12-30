@@ -884,90 +884,114 @@ const MatchScoring = () => {
 
     return (
         <Layout>
-            {/* Header */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6">
-                <div className="flex justify-between items-start mb-4">
-                    <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-500 hover:text-blue-600">
-                        <FiArrowLeft /> Back
-                    </button>
-                    <div className="text-right">
-                        <div className="flex flex-col items-end gap-1">
+            {/* Glassmorphism Header */}
+            <div className="relative overflow-hidden mb-8 rounded-3xl shadow-xl border border-white/20 bg-white/80 backdrop-blur-xl dark:bg-slate-900/80 dark:border-white/10">
+                {/* Decorative Background Gradients */}
+                <div className="absolute -top-20 -left-20 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div className="relative p-6">
+                    {/* Top Bar */}
+                    <div className="flex justify-between items-start mb-6">
+                        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-500 hover:text-blue-600 transition-colors bg-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm border border-white/20 hover:shadow-sm">
+                            <FiArrowLeft /> <span className="text-sm font-bold">Back</span>
+                        </button>
+                        <div className="flex flex-col items-end gap-2">
                             <div className="flex gap-2 items-center">
-                                <Link to={`/broadcast/${fixtureId}`} target="_blank" className="flex items-center gap-1 bg-slate-900 text-white px-2 py-1 rounded-md text-xs font-bold hover:bg-slate-700 transition-colors shadow-sm mr-2" title="Open Broadcast View for OBS">
+                                <Link to={`/broadcast/${fixtureId}`} target="_blank" className="flex items-center gap-1 bg-slate-900 text-white px-3 py-1.5 rounded-full text-xs font-bold hover:bg-slate-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5" title="Open Broadcast View">
                                     <FiMonitor /> Stream
                                 </Link>
-                                <Link to={`/match-analytics/${fixtureId}`} target="_blank" className="flex items-center gap-1 bg-blue-600 text-white px-2 py-1 rounded-md text-xs font-bold hover:bg-blue-700 transition-colors shadow-sm mr-2" title="View Advanced Analytics">
+                                <Link to={`/match-analytics/${fixtureId}`} target="_blank" className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-bold hover:bg-blue-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5" title="Match Analytics">
                                     <FiActivity /> Analytics
                                 </Link>
-                                <span className="text-sm font-bold text-gray-500">Target: {fixture.total_overs && `${fixture.total_overs} Overs`}</span>
-                                <div className={`px-3 py-1 rounded-full text-xs font-bold inline-block ${fixture.status === 'Live' ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-gray-100 text-gray-500'}`}>
+                                <div className={`px-3 py-1.5 rounded-full text-xs font-black inline-flex items-center gap-1.5 shadow-sm border ${fixture.status === 'Live' ? 'bg-red-50 text-red-600 border-red-100 animate-pulse' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                    <span className={`w-2 h-2 rounded-full ${fixture.status === 'Live' ? 'bg-red-500' : 'bg-gray-400'}`}></span>
                                     {fixture.status?.toUpperCase() || 'UNKNOWN'}
                                 </div>
                             </div>
                             {winProbability && (
-                                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1 rounded-md shadow-sm text-xs font-bold flex items-center gap-2">
-                                    <FiActivity />
-                                    <span>{winProbability.team} Win: {winProbability.percent}%</span>
+                                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1.5 rounded-full shadow-md text-xs font-bold flex items-center gap-2 border border-white/10">
+                                    <FiActivity className="text-blue-200" />
+                                    <span>{winProbability.team} to Win: {winProbability.percent}%</span>
                                 </div>
                             )}
+                        </div>
+                    </div>
+
+                    {/* Score Display */}
+                    <div className="flex justify-between items-center text-center max-w-4xl mx-auto py-2">
+                        {/* Team 1 */}
+                        <div className="flex-1 flex flex-col items-center group cursor-default">
+                            <div className="relative mb-4">
+                                <div className="absolute inset-0 bg-blue-500 blur-xl opacity-20 group-hover:opacity-30 transition-opacity rounded-full"></div>
+                                <div className="w-24 h-24 rounded-full bg-white relative z-10 p-1 shadow-lg border-2 border-white ring-4 ring-blue-50 transition-transform group-hover:scale-105">
+                                    <img
+                                        src={getImageUrl(fixture.Team1?.image_path || fixture.Team1?.logo_url || fixture.Team1?.image)}
+                                        alt={fixture.Team1?.name}
+                                        className="w-full h-full object-cover rounded-full"
+                                        onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/60?text=' + (fixture.Team1?.short_name || 'T1'); }}
+                                    />
+                                </div>
+                            </div>
+                            <h2 className={`text-xl font-bold mb-1 tracking-tight ${battingTeam?.id == fixture.Team1?.id ? 'text-blue-700' : 'text-gray-600'}`}>{fixture.Team1?.name}</h2>
+                            <div className="bg-white/60 backdrop-blur-sm rounded-xl px-6 py-2 border border-blue-50/50 shadow-sm mt-1">
+                                <p className={`text-4xl font-black ${battingTeam?.id == fixture.Team1?.id ? 'text-gray-900' : 'text-gray-400'}`}>
+                                    {team1Score?.runs || 0}<span className="text-2xl text-gray-400">/</span>{team1Score?.wickets || 0}
+                                </p>
+                                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">{team1Score?.overs || 0} OVERS</p>
+                            </div>
+                        </div>
+
+                        {/* VS Divider */}
+                        <div className="px-8 flex flex-col items-center">
+                            <span className="text-6xl font-black text-gray-200/50 absolute select-none pointer-events-none">VS</span>
+                            <div className="w-px h-16 bg-gradient-to-b from-transparent via-gray-300 to-transparent relative z-10"></div>
+                            <span className="text-sm font-bold text-gray-400 mt-2 bg-gray-100 px-2 py-0.5 rounded text-center min-w-[80px]">
+                                {fixture.total_overs ? `${fixture.total_overs} Ov` : 'T20'}
+                            </span>
+                        </div>
+
+                        {/* Team 2 */}
+                        <div className="flex-1 flex flex-col items-center group cursor-default">
+                            <div className="relative mb-4">
+                                <div className="absolute inset-0 bg-yellow-500 blur-xl opacity-20 group-hover:opacity-30 transition-opacity rounded-full"></div>
+                                <div className="w-24 h-24 rounded-full bg-white relative z-10 p-1 shadow-lg border-2 border-white ring-4 ring-yellow-50 transition-transform group-hover:scale-105">
+                                    <img
+                                        src={getImageUrl(fixture.Team2?.image_path || fixture.Team2?.logo_url || fixture.Team2?.image)}
+                                        alt={fixture.Team2?.name}
+                                        className="w-full h-full object-cover rounded-full"
+                                        onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/60?text=' + (fixture.Team2?.short_name || 'T2'); }}
+                                    />
+                                </div>
+                            </div>
+                            <h2 className={`text-xl font-bold mb-1 tracking-tight ${battingTeam?.id == fixture.Team2?.id ? 'text-yellow-700' : 'text-gray-600'}`}>{fixture.Team2?.name}</h2>
+                            <div className="bg-white/60 backdrop-blur-sm rounded-xl px-6 py-2 border border-yellow-50/50 shadow-sm mt-1">
+                                <p className={`text-4xl font-black ${battingTeam?.id == fixture.Team2?.id ? 'text-gray-900' : 'text-gray-400'}`}>
+                                    {team2Score?.runs || 0}<span className="text-2xl text-gray-400">/</span>{team2Score?.wickets || 0}
+                                </p>
+                                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">{team2Score?.overs || 0} OVERS</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="flex justify-between items-center text-center">
-                <div className="flex-1 flex flex-col items-center">
-                    <div className="w-20 h-20 rounded-full bg-gray-50 overflow-hidden mb-3 border border-gray-100 shadow-sm">
-                        <img
-                            key={fixture.Team1?.id}
-                            src={getImageUrl(fixture.Team1?.image_path || fixture.Team1?.logo_url || fixture.Team1?.image)}
-                            alt={fixture.Team1?.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = 'https://via.placeholder.com/60?text=' + (fixture.Team1?.short_name || 'T1');
-                            }}
-                        />
-                    </div>
-                    <h2 className={`text-2xl font-bold ${battingTeam?.id == fixture.Team1?.id ? 'text-deep-blue' : 'text-gray-800'}`}>{fixture.Team1?.name}</h2>
-                    <p className={`text-4xl font-black my-2 ${battingTeam?.id == fixture.Team1?.id ? 'text-gray-900' : 'text-gray-400'}`}>
-                        {team1Score?.runs}/{team1Score?.wickets}
-                    </p>
-                    <p className="text-gray-500 text-sm">Overs: {team1Score?.overs}</p>
-                </div>
-                <div className="text-gray-300 text-2xl font-bold px-4">VS</div>
-                <div className="flex-1 flex flex-col items-center">
-                    <div className="w-20 h-20 rounded-full bg-gray-50 overflow-hidden mb-3 border border-gray-100 shadow-sm">
-                        <img
-                            src={getImageUrl(fixture.Team2?.image_path || fixture.Team2?.logo_url || fixture.Team2?.image)}
-                            alt={fixture.Team2?.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => e.target.src = 'https://via.placeholder.com/60?text=' + (fixture.Team2?.short_name || 'T2')}
-                        />
-                    </div>
-                    <h2 className={`text-2xl font-bold ${battingTeam?.id == fixture.Team2?.id ? 'text-deep-blue' : 'text-gray-800'}`}>{fixture.Team2?.name}</h2>
-                    <p className={`text-4xl font-black my-2 ${battingTeam?.id == fixture.Team2?.id ? 'text-gray-900' : 'text-gray-400'}`}>
-                        {team2Score?.runs}/{team2Score?.wickets}
-                    </p>
-                    <p className="text-gray-500 text-sm">Overs: {team2Score?.overs}</p>
-                </div>
-            </div>
 
-
-            {/* Tabs */}
-            < div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6 flex overflow-hidden" >
-                {
-                    ['scoring', 'scorecard', 'commentary', 'summary'].map(tab => (
+            {/* Segmented Control Tabs */}
+            <div className="flex justify-center mb-8">
+                <div className="bg-gray-100/80 backdrop-blur-sm p-1.5 rounded-2xl inline-flex shadow-inner border border-white/50">
+                    {['scoring', 'scorecard', 'commentary', 'summary'].map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            className={`flex-1 py-4 font-bold text-center capitalize transition-colors ${activeTab === tab ? 'bg-deep-blue text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+                            className={`px-8 py-2.5 rounded-xl text-sm font-bold capitalize transition-all duration-300 relative ${activeTab === tab ? 'text-blue-700 shadow-sm bg-white' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'}`}
                         >
+                            {/* Active Indicator (could be motion layout but simplicity works) */}
                             {tab}
                         </button>
-                    ))
-                }
-            </div >
+                    ))}
+                </div>
+            </div>
 
             {/* Main Content Area */}
             < div className="min-h-[500px]" >
@@ -1101,23 +1125,32 @@ const MatchScoring = () => {
                                 </div>
                             ) : (
                                 <>
-                                    <h3 className="font-bold text-gray-700 mb-4">Record Delivery <span className="text-sm font-normal text-gray-400 ml-2">(Over {currentScore?.overs || '0.0'})</span></h3>
-                                    <div className="grid grid-cols-4 gap-4 mb-6">
-                                        {[0, 1, 2, 3, 4, 6].map(run => (
-                                            <button key={run} onClick={() => initiateRecordBall(run)} className="aspect-square rounded-xl bg-slate-50 border-2 border-slate-100 hover:border-blue-500 hover:bg-blue-50 text-3xl font-black text-slate-700 transition-all shadow-sm active:scale-95 flex items-center justify-center">
+                                    <h3 className="font-bold text-gray-700 mb-4 px-2">Record Delivery <span className="text-sm font-normal text-gray-400 ml-2">(Over {currentScore?.overs || '0.0'})</span></h3>
+
+                                    {/* Main Scoring Keypad */}
+                                    <div className="grid grid-cols-4 gap-3 mb-6">
+                                        {[0, 1, 2, 3].map(run => (
+                                            <button key={run} onClick={() => initiateRecordBall(run)} className="aspect-square rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md hover:border-blue-200 text-3xl font-black text-gray-700 transition-all active:scale-95 flex items-center justify-center hover:bg-gray-50">
                                                 {run}
                                             </button>
                                         ))}
-                                        <button onClick={handleWicketClick} className="aspect-square rounded-xl bg-red-50 border-2 border-red-100 hover:border-red-500 hover:bg-red-100 text-2xl font-bold text-red-600 transition-all flex items-center justify-center">OUT</button>
-                                        <button onClick={() => initiateRecordBall(0, 1, 'Wide', true)} className="aspect-square rounded-xl bg-orange-50 border-2 border-orange-100 hover:border-orange-500 hover:bg-orange-100 text-2xl font-bold text-orange-600 transition-all flex items-center justify-center">WD</button>
+
+                                        <button onClick={() => initiateRecordBall(4)} className="aspect-square rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 text-white shadow-lg shadow-blue-200 hover:shadow-blue-300 text-3xl font-black transition-all active:scale-95 flex items-center justify-center border border-white/20">
+                                            4
+                                        </button>
+                                        <button onClick={() => initiateRecordBall(6)} className="aspect-square rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-200 hover:shadow-purple-300 text-3xl font-black transition-all active:scale-95 flex items-center justify-center border border-white/20">
+                                            6
+                                        </button>
+
+                                        <button onClick={handleWicketClick} className="aspect-square rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg shadow-red-200 hover:shadow-red-300 text-2xl font-bold transition-all active:scale-95 flex items-center justify-center border border-white/20">OUT</button>
+                                        <button onClick={() => initiateRecordBall(0, 1, 'Wide', true)} className="aspect-square rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-orange-200 hover:shadow-orange-300 text-2xl font-bold transition-all active:scale-95 flex items-center justify-center border border-white/20">WD</button>
                                     </div>
 
-
-
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <button onClick={() => initiateRecordBall(0, 1, 'NoBall', true)} className="py-4 rounded-lg bg-gray-100 font-bold text-gray-600 hover:bg-gray-200 transition-colors">No Ball</button>
-                                        <button onClick={() => initiateRecordBall(0, 1, 'Bye', true)} className="py-4 rounded-lg bg-gray-100 font-bold text-gray-600 hover:bg-gray-200 transition-colors">Bye</button>
-                                        <button onClick={() => initiateRecordBall(0, 1, 'LegBye', true)} className="py-4 rounded-lg bg-gray-100 font-bold text-gray-600 hover:bg-gray-200 transition-colors">Leg Bye</button>
+                                    {/* Extras Keypad */}
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <button onClick={() => initiateRecordBall(0, 1, 'NoBall', true)} className="py-3.5 rounded-xl bg-gray-50 border border-gray-100 font-bold text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors text-sm uppercase tracking-wide">No Ball</button>
+                                        <button onClick={() => initiateRecordBall(0, 1, 'Bye', true)} className="py-3.5 rounded-xl bg-gray-50 border border-gray-100 font-bold text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors text-sm uppercase tracking-wide">Bye</button>
+                                        <button onClick={() => initiateRecordBall(0, 1, 'LegBye', true)} className="py-3.5 rounded-xl bg-gray-50 border border-gray-100 font-bold text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors text-sm uppercase tracking-wide">Leg Bye</button>
                                     </div>
 
                                     {!isMatchCompleted && (
@@ -1158,92 +1191,103 @@ const MatchScoring = () => {
                                         </div>
                                         <div className="p-6">
                                             {/* Batting Table */}
-                                            <table className="w-full text-sm mb-6">
-                                                <thead>
-                                                    <tr className="border-b text-gray-400 text-left">
-                                                        <th className="py-2">Batter</th>
-                                                        <th className="py-2">Status</th>
-                                                        <th className="py-2 text-right">R</th>
-                                                        <th className="py-2 text-right">B</th>
-                                                        <th className="py-2 text-right">4s</th>
-                                                        <th className="py-2 text-right">6s</th>
-                                                        <th className="py-2 text-right">SR</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {battedPlayers.map(p => (
-                                                        <tr key={p.id} className="border-b border-gray-50 text-gray-700">
-                                                            <td className="py-2 font-bold flex items-center gap-2">
-                                                                <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0">
-                                                                    <img
-                                                                        src={getImageUrl(p.image_path || p.image_url || p.image)}
-                                                                        alt={p.name}
-                                                                        className="w-full h-full object-cover"
-                                                                        onError={(e) => e.target.src = 'https://via.placeholder.com/40?text=' + p.name.charAt(0)}
-                                                                    />
-                                                                </div>
-                                                                <span className="cursor-pointer hover:text-blue-600 font-bold" onClick={() => setInfoPlayer(p)}>{p.name}</span>
-                                                            </td>
-                                                            <td className="py-2 text-gray-500 text-xs">{p.status}</td>
-                                                            <td className="py-2 text-right font-bold">{p.runs}</td>
-                                                            <td className="py-2 text-right">{p.bf}</td>
-                                                            <td className="py-2 text-right">{p.fours}</td>
-                                                            <td className="py-2 text-right">{p.sixes}</td>
-                                                            <td className="py-2 text-right">{p.sr}</td>
+                                            {/* Batting Table */}
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-sm mb-6 border-collapse">
+                                                    <thead>
+                                                        <tr className="border-b border-gray-100 text-gray-400 text-left bg-gray-50/50">
+                                                            <th className="py-3 px-4 font-bold uppercase tracking-wider text-xs">Batter</th>
+                                                            <th className="py-3 px-4 font-bold uppercase tracking-wider text-xs">Status</th>
+                                                            <th className="py-3 px-4 text-right font-bold uppercase tracking-wider text-xs">R</th>
+                                                            <th className="py-3 px-4 text-right font-bold uppercase tracking-wider text-xs">B</th>
+                                                            <th className="py-3 px-4 text-right font-bold uppercase tracking-wider text-xs">4s</th>
+                                                            <th className="py-3 px-4 text-right font-bold uppercase tracking-wider text-xs">6s</th>
+                                                            <th className="py-3 px-4 text-right font-bold uppercase tracking-wider text-xs">SR</th>
                                                         </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                                    </thead>
+                                                    <tbody>
+                                                        {battedPlayers.map((p, idx) => (
+                                                            <tr key={p.id} className={`border-b border-gray-50 transition-colors hover:bg-blue-50/30 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                                                                <td className="py-3 px-4 font-bold flex items-center gap-3">
+                                                                    <div className="w-9 h-9 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0 shadow-sm">
+                                                                        <img
+                                                                            src={getImageUrl(p.image_path || p.image_url || p.image)}
+                                                                            alt={p.name}
+                                                                            className="w-full h-full object-cover"
+                                                                            onError={(e) => e.target.src = 'https://via.placeholder.com/40?text=' + p.name.charAt(0)}
+                                                                        />
+                                                                    </div>
+                                                                    <span className="cursor-pointer hover:text-blue-600 font-bold text-gray-800" onClick={() => setInfoPlayer(p)}>{p.name}</span>
+                                                                </td>
+                                                                <td className="py-3 px-4 text-gray-500 text-xs font-medium">{p.status}</td>
+                                                                <td className="py-3 px-4 text-right font-bold text-gray-900">{p.runs}</td>
+                                                                <td className="py-3 px-4 text-right text-gray-600">{p.bf}</td>
+                                                                <td className="py-3 px-4 text-right text-blue-600 font-medium bg-blue-50/50 rounded-lg">{p.fours}</td>
+                                                                <td className="py-3 px-4 text-right text-purple-600 font-medium bg-purple-50/50 rounded-lg">{p.sixes}</td>
+                                                                <td className="py-3 px-4 text-right text-gray-600">{p.sr}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
 
                                             {/* Did Not Bat List */}
                                             {dnbPlayers.length > 0 && (
-                                                <div className="text-sm text-gray-600 mb-6">
-                                                    <span className="font-bold">Did not bat: </span>
-                                                    {dnbPlayers.map((p, i) => (
-                                                        <span key={p.id}>
-                                                            <span className="cursor-pointer hover:text-blue-600 hover:underline" onClick={() => setInfoPlayer(p)}>{p.name}</span>
-                                                            {i < dnbPlayers.length - 1 ? ', ' : ''}
-                                                        </span>
-                                                    ))}
+                                                <div className="text-sm text-gray-500 mb-8 bg-gray-50/50 p-4 rounded-xl border border-dashed border-gray-200">
+                                                    <span className="font-bold text-gray-400 uppercase tracking-widest text-xs block mb-2">Did not bat</span>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {dnbPlayers.map((p, i) => (
+                                                            <div key={p.id} className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-md border border-gray-100 shadow-sm">
+                                                                <div className="w-5 h-5 rounded-full bg-gray-100 overflow-hidden">
+                                                                    <img src={getImageUrl(p.image_path || p.image)} alt={p.name} className="w-full h-full object-cover opacity-80" onError={(e) => e.target.src = 'https://via.placeholder.com/20'} />
+                                                                </div>
+                                                                <span className="cursor-pointer hover:text-blue-600 hover:underline text-xs font-bold" onClick={() => setInfoPlayer(p)}>{p.name}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             )}
 
                                             {/* Bowling Table */}
-                                            <h4 className="font-bold text-gray-600 mb-2 text-xs uppercase">Bowling</h4>
-                                            <table className="w-full text-sm">
-                                                <thead>
-                                                    <tr className="border-b text-gray-400 text-left">
-                                                        <th className="py-2">Bowler</th>
-                                                        <th className="py-2 text-right">O</th>
-                                                        <th className="py-2 text-right">M</th>
-                                                        <th className="py-2 text-right">R</th>
-                                                        <th className="py-2 text-right">W</th>
-                                                        <th className="py-2 text-right">Eco</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {stats.bowling.map(p => (
-                                                        <tr key={p.id} className="border-b border-gray-50 text-gray-700">
-                                                            <td className="py-2 font-bold flex items-center gap-2">
-                                                                <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0">
-                                                                    <img
-                                                                        src={getImageUrl(p.image_path || p.image_url || p.image)}
-                                                                        alt={p.name}
-                                                                        className="w-full h-full object-cover"
-                                                                        onError={(e) => e.target.src = 'https://via.placeholder.com/40?text=' + p.name.charAt(0)}
-                                                                    />
-                                                                </div>
-                                                                <span className="cursor-pointer hover:text-blue-600 font-bold" onClick={() => setInfoPlayer(p)}>{p.name}</span>
-                                                            </td>
-                                                            <td className="py-2 text-right">{p.overs}</td>
-                                                            <td className="py-2 text-right">0</td>
-                                                            <td className="py-2 text-right">{p.runs}</td>
-                                                            <td className="py-2 text-right font-bold">{p.wickets}</td>
-                                                            <td className="py-2 text-right">{p.econ}</td>
+                                            <h4 className="font-bold text-gray-500 mb-3 text-xs uppercase tracking-widest flex items-center gap-2">
+                                                <FiActivity /> Bowling
+                                            </h4>
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-sm">
+                                                    <thead>
+                                                        <tr className="border-b border-gray-100 text-gray-400 text-left bg-gray-50/50">
+                                                            <th className="py-3 px-4 font-bold uppercase tracking-wider text-xs">Bowler</th>
+                                                            <th className="py-3 px-4 text-right font-bold uppercase tracking-wider text-xs">O</th>
+                                                            <th className="py-3 px-4 text-right font-bold uppercase tracking-wider text-xs">M</th>
+                                                            <th className="py-3 px-4 text-right font-bold uppercase tracking-wider text-xs">R</th>
+                                                            <th className="py-3 px-4 text-right font-bold uppercase tracking-wider text-xs">W</th>
+                                                            <th className="py-3 px-4 text-right font-bold uppercase tracking-wider text-xs">Eco</th>
                                                         </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                                    </thead>
+                                                    <tbody>
+                                                        {stats.bowling.map((p, idx) => (
+                                                            <tr key={p.id} className={`border-b border-gray-50 transition-colors hover:bg-red-50/30 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                                                                <td className="py-3 px-4 font-bold flex items-center gap-3">
+                                                                    <div className="w-9 h-9 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0 shadow-sm">
+                                                                        <img
+                                                                            src={getImageUrl(p.image_path || p.image_url || p.image)}
+                                                                            alt={p.name}
+                                                                            className="w-full h-full object-cover"
+                                                                            onError={(e) => e.target.src = 'https://via.placeholder.com/40?text=' + p.name.charAt(0)}
+                                                                        />
+                                                                    </div>
+                                                                    <span className="cursor-pointer hover:text-blue-600 font-bold text-gray-800" onClick={() => setInfoPlayer(p)}>{p.name}</span>
+                                                                </td>
+                                                                <td className="py-3 px-4 text-right text-gray-800">{p.overs}</td>
+                                                                <td className="py-3 px-4 text-right text-gray-500">0</td>
+                                                                <td className="py-3 px-4 text-right text-gray-800 font-medium">{p.runs}</td>
+                                                                <td className="py-3 px-4 text-right font-bold text-red-600 bg-red-50/50 rounded-lg">{p.wickets}</td>
+                                                                <td className="py-3 px-4 text-right text-gray-600">{p.econ}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
                                 );

@@ -1,4 +1,4 @@
-const { Auction, Team, Player, Fixture, sequelize } = require('../models');
+const { Auction, Team, Player, Fixture, AuctionPlayer, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 exports.getDashboardStats = async (req, res) => {
@@ -9,8 +9,9 @@ exports.getDashboardStats = async (req, res) => {
             teamCount,
             playerCount,
             roleDistribution,
-            playerStatus,
-            matchStatusCount
+            auctionPlayerStatus,
+            matchStatusCount,
+            totalSpentRaw
         ] = await Promise.all([
             // 1. Total Auctions
             Auction.count(),
@@ -27,8 +28,8 @@ exports.getDashboardStats = async (req, res) => {
                 group: ['role']
             }),
 
-            // 5. Player Status Distribution
-            Player.findAll({
+            // 5. Player Status Distribution (From AuctionPlayer now)
+            AuctionPlayer.findAll({
                 attributes: ['status', [sequelize.fn('COUNT', sequelize.col('id')), 'count']],
                 group: ['status']
             }),
@@ -37,7 +38,10 @@ exports.getDashboardStats = async (req, res) => {
             Fixture.findAll({
                 attributes: ['status', [sequelize.fn('COUNT', sequelize.col('id')), 'count']],
                 group: ['status']
-            })
+            }),
+
+            // 7. Total Money Spent across all auctions
+            AuctionPlayer.sum('sold_price')
         ]);
 
         // Process Role Distribution for Chart
@@ -53,7 +57,7 @@ exports.getDashboardStats = async (req, res) => {
         }));
 
         // Process Player Status
-        const statusDist = playerStatus.reduce((acc, curr) => {
+        const statusDist = auctionPlayerStatus.reduce((acc, curr) => {
             acc[curr.status] = parseInt(curr.dataValues.count);
             return acc;
         }, {});
@@ -68,11 +72,12 @@ exports.getDashboardStats = async (req, res) => {
             counts: {
                 auctions: auctionCount,
                 teams: teamCount,
-                players: playerCount
+                players: playerCount,
+                totalSpent: totalSpentRaw || 0
             },
             charts: {
                 roles,
-                playerStatus: statusDist,
+                playerStatus: statusDist, // Now derived from AuctionPlayers
                 matchStats
             },
             recentAuctions
@@ -80,7 +85,6 @@ exports.getDashboardStats = async (req, res) => {
 
     } catch (error) {
         console.error("Dashboard Stats Error:", error);
-        // detailed error
         res.status(500).json({ message: 'Error fetching dashboard stats', error: error.message });
     }
 };

@@ -1,7 +1,7 @@
-const { Player, Team } = require('../models');
+const { Player, Team, ScoreBall, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
-// Add Player
+// Add Player (Global + Assign to Auction)
 exports.createPlayer = async (req, res) => {
     try {
         const imagePath = (req.files && req.files['image']) ? req.files['image'][0].path : null;
@@ -14,26 +14,41 @@ exports.createPlayer = async (req, res) => {
             jersey_no, player_link, team_id
         } = req.body;
 
-        // Calculate new order_id (PID)
-        const maxOrder = await Player.max('order_id', { where: { auction_id } }) || 0;
-        const newOrderId = maxOrder + 1;
+        const { AuctionPlayer, Player } = require('../models'); // Import locally to ensure init
 
-        const newPlayer = await Player.create({
-            auction_id, name, father_name, mobile_number,
+        // 1. Create or Find Global Player (Simplification: Always create new for now to avoid complexity of matching logic without unique email/phone constraint enforcement upfront)
+        // Ideally: const player = await Player.findOne({ where: { mobile_number } });
+        const player = await Player.create({
+            name, father_name, mobile_number,
             dob: dob || null,
             role,
             batting_type, bowling_type, tshirt_size, trouser_size,
-            notes, payment_transaction_id, is_owner: is_owner === 'true', // FormData sends strings
-            points: points || 0,
-            jersey_no, player_link,
+            notes, payment_transaction_id,
+            preferred_jersey_no: jersey_no, player_link,
             image_path: imagePath,
-            payment_screenshot_path: screenshotPath,
-            team_id: (team_id && team_id !== '') ? team_id : null, // Optional initial assignment
-            status: (team_id && team_id !== '') ? 'Sold' : 'Available',
-            order_id: newOrderId
+            payment_screenshot_path: screenshotPath
         });
 
-        res.status(201).json(newPlayer);
+        // 2. Link to Auction via AuctionPlayer (IF auction_id provided)
+        if (auction_id) {
+            const maxOrder = await AuctionPlayer.max('order_id', { where: { auction_id } }) || 0;
+            const newOrderId = maxOrder + 1;
+
+            const auctionPlayer = await AuctionPlayer.create({
+                auction_id,
+                player_id: player.id,
+                team_id: (team_id && team_id !== '') ? team_id : null,
+                order_id: newOrderId,
+                status: (team_id && team_id !== '') ? 'Sold' : 'Available',
+                points: points || 0,
+                is_owner: is_owner === 'true' ? 'true' : 'false'
+            });
+
+            res.status(201).json({ ...player.toJSON(), ...auctionPlayer.toJSON(), id: player.id, order_id: newOrderId });
+        } else {
+            // Global Player Only Created
+            res.status(201).json(player);
+        }
     } catch (error) {
         console.error("Error creating player:", error);
         res.status(500).json({ message: 'Error creating player', error: error.message });
@@ -52,79 +67,317 @@ exports.getPlayersByAuction = async (req, res) => {
         const role = req.query.role || '';
         const status = req.query.status || '';
 
-        const whereClause = { auction_id: auctionId };
+        const { AuctionPlayer, Player, Team, sequelize } = require('../models');
 
-        if (search) {
-            whereClause.name = { [Op.like]: `%${search}%` };
-        }
-        if (role) {
-            whereClause.role = role;
-        }
-        if (status) {
-            whereClause.status = status;
-        }
+        // Build Where Clause for AuctionPlayer (Status, Auction ID)
+        const apWhere = { auction_id: auctionId };
+        if (status) apWhere.status = status;
 
-        const { count, rows } = await Player.findAndCountAll({
-            where: whereClause,
-            include: [{ model: Team, as: 'Team', attributes: ['name', 'short_name'] }],
+        // Build Where Clause for Player (Name, Role)
+        const playerWhere = {};
+        if (role) playerWhere.role = role;
+        if (search) playerWhere.name = { [Op.like]: `%${search}%` };
+
+        // Fetch using Junction Table as primary source for this context
+        const { count, rows } = await AuctionPlayer.findAndCountAll({
+            where: apWhere,
+            include: [
+                {
+                    model: Player,
+                    where: playerWhere, // Filter by global player attributes
+                    required: true
+                },
+                {
+                    model: Team,
+                    attributes: ['id', 'name', 'short_name']
+                }
+            ],
             limit,
             offset,
-            order: [['order_id', 'ASC'], ['id', 'ASC']],
-            subQuery: false // Safe for BelongsTo association to ensure correct ordering
+            order: [['order_id', 'ASC']]
         });
 
+        // Create a fixture filter based on the auction
+        const { Fixture } = require('../models');
+        const auctionFixtures = await Fixture.findAll({
+            where: { auction_id: auctionId },
+            attributes: ['id']
+        });
+        const fixtureIds = auctionFixtures.map(f => f.id);
 
+        // Common stats filter
+        const statsFilter = {
+            fixture_id: { [Op.in]: fixtureIds }
+        };
 
+        // Backend "DTO" mapping to flatten the structure for Frontend compatibility
+        const players = await Promise.all(rows.map(async ap => {
+            const p = ap.Player;
+
+            // Simplified Career Stats (Filtered by Auction)
+            const { ScoreBall } = require('../models');
+
+            const matches = await ScoreBall.count({
+                distinct: true,
+                col: 'fixture_id',
+                where: {
+                    [Op.or]: [{ striker_id: p.id }, { bowler_id: p.id }],
+                    ...statsFilter
+                }
+            });
+
+            const runs = await ScoreBall.sum('runs_scored', {
+                where: { striker_id: p.id, ...statsFilter }
+            }) || 0;
+
+            const wickets = await ScoreBall.count({
+                where: {
+                    bowler_id: p.id,
+                    is_wicket: true,
+                    wicket_type: { [Op.ne]: 'Run Out' },
+                    ...statsFilter
+                }
+            });
+
+            const balls_faced = await ScoreBall.count({
+                where: {
+                    striker_id: p.id,
+                    extra_type: { [Op.ne]: 'Wide' },
+                    ...statsFilter
+                }
+            });
+
+            const outs = await ScoreBall.count({
+                where: { player_out_id: p.id, ...statsFilter }
+            });
+
+            const balls_bowled = await ScoreBall.count({
+                where: {
+                    bowler_id: p.id,
+                    extra_type: { [Op.and]: [{ [Op.ne]: 'Wide' }, { [Op.ne]: 'NoBall' }] },
+                    ...statsFilter
+                }
+            });
+
+            // runs_conceded calculation (complex literal query needs filter injection)
+            const rc_result = await ScoreBall.findAll({
+                attributes: [[sequelize.literal('SUM(runs_scored + extras)'), 'total']],
+                where: {
+                    bowler_id: p.id,
+                    ...statsFilter
+                }
+            });
+            const runs_conceded_final = rc_result[0]?.dataValues.total || 0;
+
+            return {
+                // IDs
+                id: p.id, // Global Player ID
+                auction_player_id: ap.id, // Junction ID (needed for updates)
+                auction_id: ap.auction_id,
+
+                // PID / Order
+                order_id: ap.order_id,
+
+                // Status & Auction Info
+                status: ap.status,
+                sold_price: ap.sold_price,
+                points: ap.points,
+                is_owner: ap.is_owner === 'true',
+
+                // Team
+                team_id: ap.team_id,
+                Team: ap.Team, // Include nested Team object
+
+                // Personal Info (from Global Player or Auction Override)
+                name: p.name,
+                role: p.role,
+                // PRIORITIZE Auction Specific Image
+                image_path: ap.image_path || p.image_path,
+                mobile_number: p.mobile_number,
+                father_name: p.father_name,
+                dob: p.dob,
+                batting_type: p.batting_type,
+                bowling_type: p.bowling_type,
+                tshirt_size: p.tshirt_size,
+                trouser_size: p.trouser_size,
+                notes: ap.notes || p.notes, // PRIORITIZE Auction Notes too if we want
+                player_link: p.player_link,
+                jersey_no: p.preferred_jersey_no,
+
+                // Stats
+                stats: {
+                    matches,
+                    runs,
+                    wickets,
+                    balls_faced,
+                    outs,
+                    balls_bowled,
+                    runs_conceded: runs_conceded_final
+                },
+
+                // Timestamps
+                createdAt: ap.createdAt,
+                updatedAt: ap.updatedAt
+            };
+        }));
 
         res.json({
             totalItems: count,
             totalPages: Math.ceil(count / limit),
             currentPage: page,
-            players: rows
+            players: players
         });
     } catch (error) {
         console.error("Error fetching players:", error);
-        res.status(500).json({ message: 'Error fetching players' });
+        res.status(500).json({ message: 'Error fetching players', error: error.message });
     }
 };
 
-// Update Player
+// Get All Global Players (No Auction Filter)
+exports.getAllPlayers = async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const offset = (page - 1) * limit;
+
+        const search = req.query.search || '';
+        const role = req.query.role || '';
+
+        const whereClause = {};
+        if (search) whereClause.name = { [Op.like]: `%${search}%` };
+        if (role) whereClause.role = role;
+
+        const { count, rows } = await Player.findAndCountAll({
+            where: whereClause,
+            limit,
+            offset,
+            order: [['createdAt', 'DESC']]
+        });
+
+        const players = await Promise.all(rows.map(async p => {
+            // Simplified Career Stats
+            const matches = await ScoreBall.count({
+                distinct: true,
+                col: 'fixture_id',
+                where: {
+                    [Op.or]: [{ striker_id: p.id }, { bowler_id: p.id }]
+                }
+            });
+
+            const runs = await ScoreBall.sum('runs_scored', { where: { striker_id: p.id } }) || 0;
+            const balls_faced = await ScoreBall.count({
+                where: { striker_id: p.id, extra_type: { [Op.ne]: 'Wide' } }
+            });
+            const outs = await ScoreBall.count({ where: { player_out_id: p.id } });
+
+            const wickets = await ScoreBall.count({
+                where: {
+                    bowler_id: p.id,
+                    is_wicket: true,
+                    wicket_type: { [Op.ne]: 'Run Out' }
+                }
+            });
+            const balls_bowled = await ScoreBall.count({
+                where: { bowler_id: p.id, extra_type: { [Op.and]: [{ [Op.ne]: 'Wide' }, { [Op.ne]: 'NoBall' }] } }
+            });
+            const rc_result = await ScoreBall.findAll({
+                attributes: [[sequelize.literal('SUM(runs_scored + extras)'), 'total']],
+                where: { bowler_id: p.id }
+            });
+            const runs_conceded = rc_result[0]?.dataValues.total || 0;
+
+            return {
+                ...p.toJSON(),
+                stats: {
+                    matches,
+                    runs,
+                    wickets,
+                    balls_faced,
+                    outs,
+                    balls_bowled,
+                    runs_conceded
+                }
+            };
+        }));
+
+        res.json({
+            totalItems: count,
+            totalPages: Math.ceil(count / limit),
+            currentPage: page,
+            players: players
+        });
+    } catch (error) {
+        console.error("Error fetching global players:", error);
+        res.status(500).json({ message: 'Error fetching global players', error: error.message });
+    }
+};
+
+// Update Player (Global & Auction Specific)
 exports.updatePlayer = async (req, res) => {
     try {
-        const { id } = req.params;
+        const { id } = req.params; // Global Player ID
         const imagePath = (req.files && req.files['image']) ? req.files['image'][0].path : undefined;
         const screenshotPath = (req.files && req.files['payment_screenshot']) ? req.files['payment_screenshot'][0].path : undefined;
+        const { auction_id } = req.body; // Context is important
 
+        // 1. Update Global Player
+        const { AuctionPlayer, Player, Team } = require('../models');
         const player = await Player.findByPk(id);
+
         if (!player) return res.status(404).json({ message: 'Player not found' });
 
-        const fields = [
+        const globalFields = [
             'name', 'father_name', 'mobile_number', 'dob', 'role',
             'batting_type', 'bowling_type', 'tshirt_size', 'trouser_size',
-            'notes', 'payment_transaction_id', 'is_owner', 'points',
-            'jersey_no', 'player_link', 'team_id'
+            'notes', 'payment_transaction_id',
+            'jersey_no', 'player_link'
         ];
 
-        fields.forEach(field => {
+        globalFields.forEach(field => {
             if (req.body[field] !== undefined) {
                 let value = req.body[field];
-                // Sanitize empty strings for non-string types
-                if (value === '' && (field === 'dob' || field === 'team_id' || field === 'points')) {
-                    value = null;
-                }
-                player[field] = value;
+                player[field] = value === '' ? null : value;
             }
         });
 
-        if (imagePath) player.image_path = imagePath;
-        if (screenshotPath) player.payment_screenshot_path = screenshotPath;
+        if (imagePath && !auction_id) player.image_path = imagePath; // Update global only if not auction specific context (or we can decide policy)
+        // Policy: If editing in Global view -> Update Global. If editing in Auction view -> Update Auction Specific.
+        // But the UI sends auction_id if inside auction.
 
-        // Auto update status if team assigned
-        if (req.body.team_id && req.body.team_id !== 'null' && req.body.team_id !== '') {
-            player.status = 'Sold';
-        }
+        if (screenshotPath) player.payment_screenshot_path = screenshotPath;
+        if (req.body.jersey_no) player.preferred_jersey_no = req.body.jersey_no;
 
         await player.save();
+
+        // 2. Update AuctionPlayer (if auction_id is present)
+        if (auction_id) {
+            const auctionPlayer = await AuctionPlayer.findOne({
+                where: { player_id: id, auction_id }
+            });
+
+            if (auctionPlayer) {
+                if (req.body.is_owner !== undefined) auctionPlayer.is_owner = req.body.is_owner;
+                if (req.body.points !== undefined) auctionPlayer.points = req.body.points;
+
+                // Save Auction Specific Image
+                if (imagePath) {
+                    auctionPlayer.image_path = imagePath;
+                }
+
+                if (req.body.team_id !== undefined) {
+                    // Check if clearing team
+                    if (req.body.team_id === '' || req.body.team_id === 'null' || req.body.team_id === null) {
+                        auctionPlayer.team_id = null;
+                        auctionPlayer.status = 'Available';
+                    } else {
+                        auctionPlayer.team_id = req.body.team_id;
+                        auctionPlayer.status = 'Sold';
+                    }
+                }
+                await auctionPlayer.save();
+            }
+        }
+
         res.json(player);
     } catch (error) {
         console.error("Error updating player:", error);
@@ -132,25 +385,105 @@ exports.updatePlayer = async (req, res) => {
     }
 };
 
+// Get Unregistered Players for an Auction
+exports.getUnregisteredPlayers = async (req, res) => {
+    try {
+        const { auctionId } = req.params;
+        const search = req.query.search || '';
+
+        const { AuctionPlayer, Player } = require('../models');
+
+        // 1. Get IDs of players ALREADY in this auction
+        const registeredPlayers = await AuctionPlayer.findAll({
+            where: { auction_id: auctionId },
+            attributes: ['player_id']
+        });
+        const registeredIds = registeredPlayers.map(ap => ap.player_id);
+
+        // 2. Find Global Players NOT in that list
+        const whereClause = {
+            id: { [Op.notIn]: registeredIds }
+        };
+
+        if (search) {
+            whereClause.name = { [Op.like]: `%${search}%` };
+        }
+
+        // Limit results for performance (e.g., top 50 matches)
+        const unregisteredPlayers = await Player.findAll({
+            where: whereClause,
+            limit: 50,
+            order: [['name', 'ASC']]
+        });
+
+        res.json(unregisteredPlayers);
+    } catch (error) {
+        console.error("Error fetching unregistered:", error);
+        res.status(500).json({ message: 'Error fetching players' });
+    }
+};
+
+// Register Player to Auction
+exports.registerPlayer = async (req, res) => {
+    try {
+        const { auction_id, player_id, points } = req.body;
+        const { AuctionPlayer } = require('../models');
+
+        // Check if already registered
+        const existing = await AuctionPlayer.findOne({
+            where: { auction_id, player_id }
+        });
+
+        if (existing) {
+            return res.status(400).json({ message: 'Player already registered in this auction' });
+        }
+
+        // Calculate Next Order ID
+        const maxOrder = await AuctionPlayer.max('order_id', { where: { auction_id } }) || 0;
+        const newOrderId = maxOrder + 1;
+
+        const newEntry = await AuctionPlayer.create({
+            auction_id,
+            player_id,
+            order_id: newOrderId,
+            points: points || 0, // Base Price
+            status: 'Available',
+            is_owner: 'false'
+        });
+
+        res.status(201).json(newEntry);
+    } catch (error) {
+        console.error("Error registering player:", error);
+        res.status(500).json({ message: 'Error registering player' });
+    }
+};
+
 // Mark Player as Sold
 exports.markSold = async (req, res) => {
     try {
-        const { id } = req.params;
+        const { id } = req.params; // Global Player ID
         const { team_id, sod_price } = req.body; // sod_price = final bid amount
+        const { AuctionPlayer, Player, Team } = require('../models');
 
-        const player = await Player.findByPk(id);
         const team = await Team.findByPk(team_id);
+        if (!team) return res.status(404).json({ message: 'Team not found' });
 
-        if (!player || !team) {
-            return res.status(404).json({ message: 'Player or Team not found' });
+        // Find AuctionPlayer for this player and this team's auction
+        const auctionPlayer = await AuctionPlayer.findOne({
+            where: { player_id: id, auction_id: team.auction_id }
+        });
+
+        if (!auctionPlayer) {
+            return res.status(404).json({ message: 'Player not registered for this auction' });
         }
 
-        if (player.status === 'Sold') {
+        if (auctionPlayer.status === 'Sold') {
             return res.status(400).json({ message: 'Player is already sold' });
         }
 
         // 1. Check Player Count Limit
-        const currentPlayerCount = await Player.count({ where: { team_id } });
+        // Count how many players this team has in this auction
+        const currentPlayerCount = await AuctionPlayer.count({ where: { team_id, auction_id: team.auction_id } });
         if (currentPlayerCount >= team.players_per_team) {
             return res.status(400).json({ message: `Team full! Max ${team.players_per_team} players allowed.` });
         }
@@ -164,13 +497,13 @@ exports.markSold = async (req, res) => {
         team.purse_remaining -= sod_price;
         await team.save();
 
-        // Update Player Status
-        player.status = 'Sold';
-        player.team_id = team_id;
-        player.sold_price = sod_price;
-        await player.save();
+        // Update AuctionPlayer Status
+        auctionPlayer.status = 'Sold';
+        auctionPlayer.team_id = team_id;
+        auctionPlayer.sold_price = sod_price;
+        await auctionPlayer.save();
 
-        res.json({ message: 'Player Sold!', player, team });
+        res.json({ message: 'Player Sold!', player: auctionPlayer, team });
     } catch (error) {
         console.error("Error selling player:", error);
         res.status(500).json({ message: 'Error processing sale' });
@@ -180,21 +513,31 @@ exports.markSold = async (req, res) => {
 // Mark Player as Unsold
 exports.markUnsold = async (req, res) => {
     try {
-        const { id } = req.params;
-        const player = await Player.findByPk(id);
+        const { id } = req.params; // Global Player ID
+        const { auction_id } = req.body;
+        const { AuctionPlayer } = require('../models');
 
-        if (!player) return res.status(404).json({ message: 'Player not found' });
+        if (!auction_id) {
+            return res.status(400).json({ message: 'Auction ID is required' });
+        }
 
-        player.status = 'Unsold';
-        await player.save();
+        const auctionPlayer = await AuctionPlayer.findOne({
+            where: { player_id: id, auction_id }
+        });
 
-        res.json({ message: 'Player marked Unsold', player });
+        if (!auctionPlayer) return res.status(404).json({ message: 'Player not found in this auction' });
+
+        auctionPlayer.status = 'Unsold';
+        await auctionPlayer.save();
+
+        res.json({ message: 'Player marked as Unsold' });
     } catch (error) {
-        res.status(500).json({ message: 'Error updating status' });
+        console.error("Error marking unsold:", error);
+        res.status(500).json({ message: 'Error marking unsold' });
     }
 };
 
-// Delete Player
+// Delete Player (Remove from Auction)
 exports.deletePlayer = async (req, res) => {
     try {
         const { id } = req.params;

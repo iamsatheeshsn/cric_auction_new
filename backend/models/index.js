@@ -8,17 +8,34 @@ const ScoreBall = require('./ScoreBall')(sequelize);
 
 // Associations
 
+const AuctionPlayer = require('./AuctionPlayer')(sequelize);
+
+// Associations
+
 // Auction has many Teams
 Auction.hasMany(Team, { foreignKey: 'auction_id', onDelete: 'CASCADE' });
 Team.belongsTo(Auction, { foreignKey: 'auction_id' });
 
-// Auction has many Players
-Auction.hasMany(Player, { foreignKey: 'auction_id', onDelete: 'CASCADE' });
-Player.belongsTo(Auction, { foreignKey: 'auction_id' });
+// Player - Auction Relationship (Many-to-Many via AuctionPlayer)
+// We set up flexible associations so we can query easily
+Auction.belongsToMany(Player, { through: AuctionPlayer, foreignKey: 'auction_id' });
+Player.belongsToMany(Auction, { through: AuctionPlayer, foreignKey: 'player_id' });
 
-// Team has many Players
-Team.hasMany(Player, { as: 'Players', foreignKey: 'team_id' });
-Player.belongsTo(Team, { foreignKey: 'team_id' });
+// Explicit Association for attributes access
+Auction.hasMany(AuctionPlayer, { foreignKey: 'auction_id', onDelete: 'CASCADE' });
+AuctionPlayer.belongsTo(Auction, { foreignKey: 'auction_id' });
+
+Player.hasMany(AuctionPlayer, { foreignKey: 'player_id', onDelete: 'CASCADE' });
+AuctionPlayer.belongsTo(Player, { foreignKey: 'player_id' });
+
+// Team - AuctionPlayer Association (Sold Players)
+Team.hasMany(AuctionPlayer, { foreignKey: 'team_id' });
+AuctionPlayer.belongsTo(Team, { foreignKey: 'team_id' });
+
+// Team Relationship in Auction context
+// A player belongs to a team *within* an auction logic
+Team.hasMany(AuctionPlayer, { as: 'Squad', foreignKey: 'team_id' });
+AuctionPlayer.belongsTo(Team, { foreignKey: 'team_id' });
 
 // Auction has many Fixtures
 Auction.hasMany(Fixture, { foreignKey: 'auction_id', onDelete: 'CASCADE' });
@@ -46,5 +63,6 @@ module.exports = {
     Team,
     Player,
     Fixture,
+    AuctionPlayer,
     ScoreBall
 };

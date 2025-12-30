@@ -16,7 +16,7 @@ const PlayerInfoModal = ({ player, isOpen, onClose }) => {
     };
 
     // Helper for safe value
-    const val = (v) => v || '-';
+    const val = (v) => (v === undefined || v === null || v === '') ? '-' : v;
 
     return (
         <AnimatePresence>
@@ -26,7 +26,7 @@ const PlayerInfoModal = ({ player, isOpen, onClose }) => {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.9, y: 20 }}
                     transition={{ type: "spring", duration: 0.5 }}
-                    className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden relative"
+                    className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl relative"
                 >
                     {/* Header Image / Pattern */}
                     <div className="h-32 bg-gradient-to-r from-deep-blue to-blue-700 relative">
@@ -81,7 +81,7 @@ const PlayerInfoModal = ({ player, isOpen, onClose }) => {
                         </div>
 
                         {/* Grid Details */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
                             {/* Personal Details */}
                             <div className="space-y-4">
@@ -113,7 +113,7 @@ const PlayerInfoModal = ({ player, isOpen, onClose }) => {
 
                             {/* Cricketing Details */}
                             <div className="space-y-4">
-                                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 pb-2">Cricketing Stats</h4>
+                                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 pb-2">Cricketing Details</h4>
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400"><FiActivity size={14} /></div>
@@ -141,8 +141,76 @@ const PlayerInfoModal = ({ player, isOpen, onClose }) => {
                                 </div>
                             </div>
 
+                            {/* Career Stats (Moved to Col 3) */}
+                            <div className="md:col-span-1">
+                                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 pb-1 mb-2">Career Stats</h4>
+                                <div className="bg-gradient-to-br from-slate-50 to-gray-100 rounded-xl p-3 border border-gray-200 shadow-sm">
+                                    <div className="grid grid-cols-3 gap-y-3 gap-x-1 text-center">
+                                        {/* Row 1: Key Stats */}
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Matches</span>
+                                            <span className="text-lg font-black text-gray-800">{val(player.stats?.matches, 0)}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Runs</span>
+                                            <span className="text-lg font-black text-orange-600">{val(player.stats?.runs, 0)}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Wickets</span>
+                                            <span className="text-lg font-black text-purple-600">{val(player.stats?.wickets, 0)}</span>
+                                        </div>
+
+                                        {/* Divider */}
+                                        <div className="col-span-3 h-px bg-gray-200 my-1"></div>
+
+                                        {/* Row 2: Batting */}
+                                        <div className="flex flex-col" title="Batting Average">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Bat Avg</span>
+                                            <span className="text-sm font-bold text-gray-700">
+                                                {player.stats?.outs > 0
+                                                    ? (player.stats.runs / player.stats.outs).toFixed(1)
+                                                    : (player.stats?.runs > 0 ? player.stats.runs : '-')}
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-col" title="Strike Rate">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Str Rate</span>
+                                            <span className="text-sm font-bold text-gray-700">
+                                                {player.stats?.balls_faced > 0 ? ((player.stats.runs / player.stats.balls_faced) * 100).toFixed(0) : '-'}
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-col" title="Balls Faced">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Balls</span>
+                                            <span className="text-sm font-bold text-gray-700">{val(player.stats?.balls_faced, 0)}</span>
+                                        </div>
+
+                                        {/* Divider */}
+                                        <div className="col-span-3 h-px bg-gray-200 my-1"></div>
+
+                                        {/* Row 3: Bowling */}
+                                        <div className="flex flex-col" title="Bowling Average">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Bowl Avg</span>
+                                            <span className="text-sm font-bold text-gray-700">
+                                                {player.stats?.wickets > 0 ? (player.stats.runs_conceded / player.stats.wickets).toFixed(1) : '-'}
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-col" title="Economy Rate">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Economy</span>
+                                            <span className="text-sm font-bold text-gray-700">
+                                                {player.stats?.balls_bowled > 0 ? ((player.stats.runs_conceded / player.stats.balls_bowled) * 6).toFixed(1) : '-'}
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-col" title="Overs Bowled">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Overs</span>
+                                            <span className="text-sm font-bold text-gray-700">
+                                                {player.stats?.balls_bowled ? Math.floor(player.stats.balls_bowled / 6) + '.' + (player.stats.balls_bowled % 6) : '-'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* System/Extra Info */}
-                            <div className="md:col-span-2 space-y-4">
+                            <div className="md:col-span-3 space-y-4">
                                 <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 pb-2">Other Details</h4>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     <div className="bg-gray-50 p-3 rounded-lg">
@@ -165,7 +233,7 @@ const PlayerInfoModal = ({ player, isOpen, onClose }) => {
                             </div>
 
                             {player.notes && (
-                                <div className="md:col-span-2 bg-yellow-50 p-4 rounded-xl border border-yellow-100 text-sm text-yellow-800">
+                                <div className="md:col-span-3 bg-yellow-50 p-4 rounded-xl border border-yellow-100 text-sm text-yellow-800">
                                     <p className="font-bold flex items-center gap-2 mb-1"><FiInfo /> Notes</p>
                                     {player.notes}
                                 </div>

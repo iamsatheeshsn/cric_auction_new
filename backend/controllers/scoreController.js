@@ -1,4 +1,4 @@
-const { Fixture, ScoreBall, Player, Team } = require('../models');
+const { Fixture, ScoreBall, Player, Team, AuctionPlayer } = require('../models');
 const { Op } = require('sequelize');
 
 // Get Match Scoring State
@@ -10,12 +10,18 @@ exports.getMatchScoringDetails = async (req, res) => {
                 {
                     model: Team,
                     as: 'Team1',
-                    include: [{ model: Player, as: 'Players' }]
+                    include: [{
+                        model: AuctionPlayer,
+                        include: [{ model: Player }]
+                    }]
                 },
                 {
                     model: Team,
                     as: 'Team2',
-                    include: [{ model: Player, as: 'Players' }]
+                    include: [{
+                        model: AuctionPlayer,
+                        include: [{ model: Player }]
+                    }]
                 }
             ]
         });
@@ -100,10 +106,36 @@ exports.getMatchScoringDetails = async (req, res) => {
             }
         }
 
+        // Transform AuctionPlayers -> Players for frontend compatibility
+        const fixtureData = fixture.toJSON();
+
+        const transformTeam = (team) => {
+            if (team && team.AuctionPlayers) {
+                team.Players = team.AuctionPlayers.map(ap => {
+                    const img = ap.image_path || ap.Player.image_path;
+                    // console.log(`Player ${ap.Player.name}: AP.img=${ap.image_path}, P.img=${ap.Player.image_path}, Final=${img}`);
+                    return {
+                        ...ap.Player,
+                        sold_price: ap.points || ap.sold_price,
+                        image_path: img // Prioritize Auction Image
+                    };
+                });
+                // delete team.AuctionPlayers;
+            } else {
+                team.Players = [];
+            }
+        };
+
+        transformTeam(fixtureData.Team1);
+        transformTeam(fixtureData.Team2);
+
         res.json({
-            fixture,
+            fixture: fixtureData,
             balls,
-            summary: { score1, score2 },
+            summary: {
+                score1,
+                score2
+            },
             winProbability
         });
     } catch (error) {

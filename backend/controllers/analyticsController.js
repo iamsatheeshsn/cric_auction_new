@@ -1,57 +1,64 @@
-const { Team, Player, Auction, sequelize } = require('../models');
+const { Team, Player, Auction, AuctionPlayer, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 exports.getAuctionAnalytics = async (req, res) => {
     try {
         console.log("Fetching Analytics...");
-
-        // 1. Budget Utilization by Team
-        // Fetch specific fields from Teams: Name, Budget, and sum of sold players
-        // We can do this via Sequelize inclusions or raw query for speed/ease
         const { auction_id } = req.query;
         const filter = auction_id ? { auction_id } : {};
 
+        // 1. Budget Stats via AuctionPlayer
         const teams = await Team.findAll({
             where: filter,
             attributes: ['id', 'name', 'purse_remaining', 'short_name', 'image_path'],
             include: [{
-                model: Player,
-                as: 'Players',
-                attributes: ['sold_price', 'status', 'role'],
+                model: AuctionPlayer,
+                // as: 'SoldPlayers', // Remove alias if not defined in associations
                 where: { status: 'Sold' },
                 required: false
             }]
         });
 
         const budgetStats = teams.map(team => {
-            const spent = team.Players.reduce((sum, p) => sum + (p.sold_price || 0), 0);
+            // sold_price is now on AuctionPlayer
+            const spent = (team.AuctionPlayers || []).reduce((sum, ap) => sum + (ap.sold_price || 0), 0);
             return {
                 id: team.id,
                 name: team.short_name || team.name,
-                full_name: team.name,
+                full_name: team.name, // Added full_name for table
                 image_path: team.image_path,
-                budget: (team.purse_remaining || 0) + spent, // Total Budget = Remaining + Spent
+                budget: (team.purse_remaining || 0) + spent,
                 spent: spent,
-                remaining: team.purse_remaining, // Use DB value directly
-                playerCount: team.Players.length
+                remaining: team.purse_remaining,
+                playerCount: (team.AuctionPlayers || []).length
             };
         });
 
-        // 2. Role Distribution (Aggregate)
-        const roleStats = await Player.findAll({
-            attributes: [
-                'role',
-                [sequelize.fn('COUNT', sequelize.col('id')), 'count']
-            ],
-            where: {
-                role: { [Op.ne]: null },
-                ...filter
-            },
-            group: ['role']
+        // 2. Role Distribution via AuctionPlayer -> Player
+        // We need to count roles of players in THIS auction
+        const roleStatsCount = await AuctionPlayer.findAll({
+            where: filter,
+            include: [{ model: Player, attributes: ['role'] }],
+            raw: true
         });
 
-        // 3. Status Distribution
-        const statusStats = await Player.findAll({
+        // Manual Grouping since Player.role is nested
+        const roleCounts = {};
+        roleStatsCount.forEach(ap => {
+            const r = ap['Player.role']; // flat key from raw:true
+            if (r) {
+                roleCounts[r] = (roleCounts[r] || 0) + 1;
+            }
+        });
+
+        const roleStats = Object.keys(roleCounts).map(role => ({
+            role,
+            count: roleCounts[role]
+        }));
+
+
+        // 3. Status Distribution via AuctionPlayer
+        const statusStats = await AuctionPlayer.findAll({
             attributes: [
                 'status',
                 [sequelize.fn('COUNT', sequelize.col('id')), 'count']

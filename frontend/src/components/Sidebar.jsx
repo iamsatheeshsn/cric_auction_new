@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FiHome, FiGrid, FiUsers, FiLogOut, FiSettings, FiActivity, FiPieChart, FiAward, FiSun, FiMoon } from 'react-icons/fi';
+import { FiHome, FiGrid, FiUsers, FiLogOut, FiSettings, FiActivity, FiPieChart, FiAward, FiSun, FiMoon, FiChevronDown, FiChevronUp, FiLock } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
 import Logo from './Logo';
 
@@ -8,10 +8,12 @@ const Sidebar = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { theme, toggleTheme } = useTheme();
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     const menuItems = [
         { path: '/dashboard', label: 'Dashboard', icon: <FiHome /> },
         { path: '/auctions', label: 'Auctions', icon: <FiGrid /> },
+        { path: '/players', label: 'Players', icon: <FiUsers /> },
         { path: '/points', label: 'Points Table', icon: <FiAward /> },
         { path: '/compare', label: 'Play Comparison', icon: <FiUsers /> },
         { path: '/stats', label: 'Stats Hub', icon: <FiActivity /> },
@@ -45,17 +47,36 @@ const Sidebar = () => {
             </nav>
 
             <div className="p-4 border-t border-white/10 shrink-0 space-y-2">
-                <button
-                    onClick={toggleTheme}
-                    className="flex items-center gap-4 w-full px-4 py-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all"
-                >
-                    {theme === 'dark' ? <FiSun className="text-xl text-yellow-400" /> : <FiMoon className="text-xl" />}
-                    <span className="font-medium">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
-                </button>
-                <Link to="/settings" className="flex items-center gap-4 w-full px-4 py-3 text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-all">
-                    <FiSettings className="text-xl" />
-                    <span className="font-medium">Settings</span>
-                </Link>
+                {/* Settings Menu */}
+                <div>
+                    <button
+                        onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                        className={`flex items-center justify-between w-full px-4 py-3 rounded-lg transition-all ${isSettingsOpen ? 'bg-white/10 text-white' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}
+                    >
+                        <div className="flex items-center gap-4">
+                            <FiSettings className="text-xl" />
+                            <span className="font-medium">Settings</span>
+                        </div>
+                        {isSettingsOpen ? <FiChevronUp /> : <FiChevronDown />}
+                    </button>
+
+                    {isSettingsOpen && (
+                        <div className="mt-2 space-y-1 pl-4">
+                            <Link to="/settings" className="flex items-center gap-4 w-full px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">
+                                <FiLock className="text-lg" />
+                                <span>Change Password</span>
+                            </Link>
+                            <button
+                                onClick={toggleTheme}
+                                className="flex items-center gap-4 w-full px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+                            >
+                                {theme === 'dark' ? <FiSun className="text-lg text-yellow-400" /> : <FiMoon className="text-lg" />}
+                                <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
+
                 <button onClick={handleLogout} className="flex items-center gap-4 w-full px-4 py-3 text-red-400 hover:text-red-300 hover:bg-white/5 rounded-lg transition-all mt-2">
                     <FiLogOut className="text-xl" />
                     <span className="font-medium">Logout</span>
