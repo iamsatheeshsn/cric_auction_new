@@ -39,8 +39,9 @@ app.use('/api/score', require('./routes/scoreRoutes'));
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 app.use('/api/stats', require('./routes/statsRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
-app.use('/api/points', require('./routes/pointsRoutes')); // Did I make this? No, I made tournamentRoutes. Remove if error.
+app.use('/api/points', require('./routes/pointsRoutes'));
 app.use('/api/tournament', require('./routes/tournamentRoutes'));
+app.use('/api/trades', require('./routes/tradeRoutes'));
 
 app.get('/', (req, res) => {
     res.send('Cricket Auction API is running...');

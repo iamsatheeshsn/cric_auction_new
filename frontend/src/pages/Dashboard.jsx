@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import api from '../api/axios';
-import { FiActivity, FiUsers, FiDollarSign, FiBriefcase, FiCalendar, FiTrendingUp } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
+import { FiActivity, FiUsers, FiDollarSign, FiBriefcase, FiCalendar, FiRefreshCw } from 'react-icons/fi';
 import StatsCard from '../components/StatsCard';
 import { DonutChart, BarChart } from '../components/SimpleCharts';
 
@@ -176,11 +177,14 @@ const Dashboard = () => {
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className={`text-xs px-3 py-1 rounded-full font-bold border ${auction.status === 'Live' ? 'bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/30 animate-pulse' :
-                                                auction.status === 'Completed' ? 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/20 dark:text-green-300 dark:border-green-900/30' :
-                                                    'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-700'
+                                            auction.status === 'Completed' ? 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/20 dark:text-green-300 dark:border-green-900/30' :
+                                                'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-700/50 dark:text-gray-400 dark:border-gray-700'
                                             }`}>
                                             {auction.status || 'Draft'}
                                         </span>
+                                        <Link to={`/auction/${auction.id}/transfer-window`} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Transfer Window">
+                                            <FiRefreshCw size={14} />
+                                        </Link>
                                     </div>
                                 </div>
                             ))}

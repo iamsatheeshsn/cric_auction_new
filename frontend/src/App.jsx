@@ -19,6 +19,7 @@ import RegisterPage from './pages/RegisterPage';
 
 import Settings from './pages/Settings';
 import MatchAnalytics from './pages/MatchAnalytics';
+import TransferWindow from './pages/TransferWindow';
 import BroadcastView from './pages/BroadcastView';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ThemeProvider } from './context/ThemeContext';
@@ -54,6 +55,7 @@ function App() {
             <Route path="/compare" element={<ProtectedRoute><PlayerComparison /></ProtectedRoute>} />
 
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/auction/:auctionId/transfer-window" element={<ProtectedRoute><TransferWindow /></ProtectedRoute>} />
             <Route path="/tournament-bracket/:auctionId" element={<ProtectedRoute><TournamentBracket /></ProtectedRoute>} />
 
             {/* Broadcast Route (Public/Protected?) - Keeping protected for now, usually would be distinct */}

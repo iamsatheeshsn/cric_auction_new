@@ -6,6 +6,7 @@ const Player = require('./Player')(sequelize);
 const Fixture = require('./Fixture')(sequelize);
 const ScoreBall = require('./ScoreBall')(sequelize);
 const PointsTable = require('./PointsTable')(sequelize);
+const Trade = require('./Trade')(sequelize);
 
 // Associations
 
@@ -13,9 +14,30 @@ const AuctionPlayer = require('./AuctionPlayer')(sequelize);
 
 // Associations
 
+// Trade Associations
+Trade.belongsTo(Team, { as: 'RequesterTeam', foreignKey: 'requester_team_id' });
+Trade.belongsTo(Team, { as: 'ResponderTeam', foreignKey: 'responder_team_id' });
+Trade.belongsTo(Player, { as: 'PlayerToReceive', foreignKey: 'player_to_receive_id' });
+Trade.belongsTo(Player, { as: 'PlayerToGive', foreignKey: 'player_to_give_id' });
+
 // Points Table Associations
 Auction.hasMany(PointsTable, { foreignKey: 'auction_id', onDelete: 'CASCADE' });
 PointsTable.belongsTo(Auction, { foreignKey: 'auction_id' });
+
+// ... (rest of associations) ...
+
+module.exports = {
+    sequelize,
+    User,
+    Auction,
+    Team,
+    Player,
+    Fixture,
+    AuctionPlayer,
+    ScoreBall,
+    PointsTable,
+    Trade
+};
 
 Team.hasOne(PointsTable, { foreignKey: 'team_id', onDelete: 'CASCADE' });
 PointsTable.belongsTo(Team, { foreignKey: 'team_id' });
@@ -73,5 +95,6 @@ module.exports = {
     Fixture,
     AuctionPlayer,
     ScoreBall,
-    PointsTable
+    PointsTable,
+    Trade
 };
