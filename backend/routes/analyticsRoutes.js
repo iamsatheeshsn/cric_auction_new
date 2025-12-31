@@ -3,5 +3,6 @@ const router = express.Router();
 const analyticsController = require('../controllers/analyticsController');
 
 router.get('/', analyticsController.getAuctionAnalytics);
+router.get('/squad/:auctionId/:teamId', analyticsController.getSquadAnalysis);
 
 module.exports = router;

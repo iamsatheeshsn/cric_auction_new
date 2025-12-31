@@ -37,6 +37,12 @@ exports.getPointsTable = async (req, res) => {
 
         // Process each fixture
         for (const fixture of fixtures) {
+            // Fetch balls for this fixture to get precise runs/overs
+            const balls = await ScoreBall.findAll({ where: { fixture_id: fixture.id } });
+
+            // Fix for Ghost Matches: If 0 balls bowled, ignore this fixture
+            if (balls.length === 0) continue;
+
             const t1 = fixture.team1_id;
             const t2 = fixture.team2_id;
 
@@ -56,15 +62,11 @@ exports.getPointsTable = async (req, res) => {
                 stats[t1].lost++;
             } else {
                 // Tie or No Result
-                stats[t1].tied++; // treating NR as tie for simplicity or separate
+                stats[t1].tied++;
                 stats[t1].points += 1;
                 stats[t2].tied++;
                 stats[t2].points += 1;
             }
-
-            // NRR Calculation Data (Slow but accurate)
-            // Fetch balls for this fixture to get precise runs/overs
-            const balls = await ScoreBall.findAll({ where: { fixture_id: fixture.id } });
 
             const processInnings = (inn, battingTeamId, bowlingTeamId) => {
                 const innBalls = balls.filter(b => b.innings === inn);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { FiAward, FiArrowLeft, FiRefreshCw, FiX, FiCheckCircle, FiCalendar, FiActivity } from 'react-icons/fi';
+import { FiAward, FiArrowLeft, FiRefreshCw, FiX, FiCheckCircle, FiCalendar, FiActivity, FiAlertTriangle } from 'react-icons/fi';
 import { FaCrown } from 'react-icons/fa';
 import api from '../api/axios';
 import { toast } from 'react-toastify';
@@ -12,6 +12,7 @@ const TournamentBracket = () => {
     const [bracket, setBracket] = useState([]);
     const [loading, setLoading] = useState(true);
     const [pointsTable, setPointsTable] = useState([]);
+    const [hasUnfinishedMatches, setHasUnfinishedMatches] = useState(false);
     const [showGenerationModal, setShowGenerationModal] = useState(false);
     const [generating, setGenerating] = useState(false);
     const [winnerModalData, setWinnerModalData] = useState(null); // { matchId, winnerId, team }
@@ -22,12 +23,17 @@ const TournamentBracket = () => {
 
     const fetchData = async () => {
         try {
-            const [bracketRes, pointsRes] = await Promise.all([
+            const [bracketRes, pointsRes, fixturesRes] = await Promise.all([
                 api.get(`/tournament/auction/${auctionId}/bracket`),
-                api.get(`/tournament/auction/${auctionId}/points`)
+                api.get(`/tournament/auction/${auctionId}/points`),
+                api.get(`/fixtures/${auctionId}`)
             ]);
             setBracket(bracketRes.data);
             setPointsTable(pointsRes.data);
+
+            // Check for unfinished matches
+            const unfinished = fixturesRes.data.some(f => f.status !== 'Completed');
+            setHasUnfinishedMatches(unfinished);
         } catch (error) {
             console.error("Failed to load tournament data", error);
         } finally {
@@ -243,37 +249,77 @@ const TournamentBracket = () => {
                     /* Empty State */
                     <motion.div
                         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                        className="flex flex-col items-center justify-center py-24 bg-white rounded-[2rem] border border-dashed border-gray-200 text-center mx-auto max-w-4xl shadow-sm"
+                        className="flex flex-col items-center justify-center py-12 px-4"
                     >
-                        <div className="bg-blue-50 p-8 rounded-full mb-6 text-blue-600 mb-8 ring-8 ring-blue-50/50">
-                            <FiAward size={64} />
+                        {/* Header Section - Moved to Top */}
+                        <div className="relative z-10 max-w-3xl mx-auto text-center mb-12">
+                            <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-6">
+                                The Stage is Set for the <br />
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Knockout Phase</span>
+                            </h2>
+                            <p className="text-lg text-slate-500 leading-relaxed">
+                                The league stage has reached its conclusion. Only the top performing teams remain to battle for the championship trophy.
+                            </p>
                         </div>
-                        <h2 className="text-3xl font-black text-gray-900 mb-3">Ready for the Knockouts?</h2>
-                        <p className="text-gray-500 max-w-lg text-lg mb-10 leading-relaxed">
-                            The league stage has concluded. It's time to generate the fixtures for the Playoffs.
-                        </p>
 
-                        {pointsTable.length > 0 && (
-                            <div className="w-full max-w-md bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-2xl shadow-gray-100/50">
-                                <div className="bg-gray-50/80 px-6 py-4 border-b border-gray-100 flex justify-between items-center backdrop-blur-sm">
-                                    <h4 className="font-bold text-gray-700">Projected Qualifiers</h4>
-                                    <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-1 rounded-full border border-green-200">Top 4</span>
+                        <div className="relative w-full max-w-5xl">
+                            {/* Decorative Background */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-indigo-500/5 to-purple-500/5 rounded-[3rem] blur-3xl" />
+
+                            <div className="relative bg-white/50 backdrop-blur-xl border border-white/60 rounded-[2.5rem] shadow-2xl shadow-blue-900/5 p-8 md:p-12 text-center overflow-hidden">
+
+                                {/* Decorative Circles */}
+                                <div className="absolute top-0 left-0 w-64 h-64 bg-blue-100 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2 opacity-50" />
+                                <div className="absolute bottom-0 right-0 w-64 h-64 bg-purple-100 rounded-full blur-[100px] translate-x-1/2 translate-y-1/2 opacity-50" />
+
+                                <div className="relative z-10 max-w-2xl mx-auto mb-10">
+                                    <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 transform hover:scale-105 transition-transform duration-500">
+                                        <FiAward size={48} />
+                                    </div>
                                 </div>
-                                <div className="divide-y divide-gray-50">
-                                    {pointsTable.slice(0, 4).map((t, i) => (
-                                        <div key={t.id} className="flex justify-between items-center px-6 py-4 hover:bg-gray-50/50 transition-colors">
-                                            <div className="flex items-center gap-4">
-                                                <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold ${i === 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'}`}>
-                                                    {i + 1}
-                                                </span>
-                                                <span className="font-bold text-gray-900">{t.Team?.name}</span>
-                                            </div>
-                                            <span className="text-sm font-bold text-gray-400">{t.points} pts</span>
+
+                                {pointsTable.length > 0 && (
+                                    <div className="max-w-4xl mx-auto">
+                                        <div className="flex items-center justify-center gap-3 mb-8">
+                                            <div className="h-px w-12 bg-slate-200" />
+                                            <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                                                {hasUnfinishedMatches ? "Top 4 Teams (Provisional)" : "Qualified Teams"}
+                                            </span>
+                                            <div className="h-px w-12 bg-slate-200" />
                                         </div>
-                                    ))}
-                                </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                            {pointsTable.slice(0, 4).map((t, i) => (
+                                                <motion.div
+                                                    key={t.id}
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    transition={{ delay: i * 0.1 }}
+                                                    className="group bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:shadow-xl hover:border-blue-100 transition-all duration-300 relative overflow-hidden"
+                                                >
+                                                    <div className={`absolute top-0 right-0 p-2 text-[10px] font-bold uppercase tracking-wider ${i === 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100 text-slate-500'
+                                                        } rounded-bl-xl`}>
+                                                        Rank {i + 1}
+                                                    </div>
+
+                                                    <div className="pt-4 pb-2">
+                                                        <div className="w-16 h-16 mx-auto mb-4 rounded-full border-4 border-slate-50 shadow-inner overflow-hidden group-hover:scale-110 transition-transform duration-300">
+                                                            {t.Team?.image_path ? (
+                                                                <img src={`http://localhost:5000/${t.Team.image_path}`} alt={t.Team.name} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-300 font-bold">?</div>
+                                                            )}
+                                                        </div>
+                                                        <h3 className="font-bold text-slate-900 truncate px-2">{t.Team?.name}</h3>
+                                                        <p className="text-xs text-slate-500 font-medium mt-1">{t.points} Points <span className="mx-1">•</span> NRR {t.nrr}</p>
+                                                    </div>
+                                                </motion.div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        )}
+                        </div>
                     </motion.div>
                 ) : (
 
@@ -387,13 +433,13 @@ const TournamentBracket = () => {
                             initial={{ scale: 0.95, opacity: 0, y: 20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                            className="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100"
+                            className="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden border border-gray-100"
                         >
-                            <div className="bg-slate-900 p-8 text-white relative overflow-hidden">
-                                <div className="absolute top-0 right-0 p-8 opacity-5 transform rotate-12 scale-150">
-                                    <FiAward size={140} />
+                            <div className="bg-slate-900 px-6 py-4 text-white relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-4 opacity-5 transform rotate-12 scale-150">
+                                    <FiAward size={80} />
                                 </div>
-                                <h2 className="text-3xl font-black relative z-10 tracking-tight">Generate Fixtures</h2>
+                                <h2 className="text-2xl font-black relative z-10 tracking-tight">Generate Fixtures</h2>
                                 <p className="text-slate-400 relative z-10 mt-2">Confirm Knockout Qualification</p>
                                 <button
                                     onClick={() => setShowGenerationModal(false)}
@@ -403,8 +449,8 @@ const TournamentBracket = () => {
                                 </button>
                             </div>
 
-                            <div className="p-8">
-                                <p className="text-gray-600 font-medium mb-6 leading-relaxed">
+                            <div className="px-6 py-4">
+                                <p className="text-gray-600 font-medium mb-3 leading-relaxed text-sm">
                                     {bracket.length > 0 ? (
                                         <span className="text-red-600 bg-red-50 px-2 py-1 rounded-lg border border-red-100 block mb-2 text-sm">
                                             ⚠️ Warning: This will DELETE existing matches and regenerate new ones.
@@ -415,9 +461,21 @@ const TournamentBracket = () => {
                                     Fixtures will be automatically generated based on current standings.
                                 </p>
 
-                                <div className="bg-gray-50 rounded-2xl p-2 border border-gray-100 mb-8">
+                                {hasUnfinishedMatches && (
+                                    <div className="bg-yellow-50 border-1 border-yellow-200 p-3 rounded-xl mb-3 flex gap-3">
+                                        <FiAlertTriangle className="text-yellow-600 flex-shrink-0 mt-0.5" size={20} />
+                                        <div>
+                                            <h4 className="font-bold text-yellow-800 text-sm">Action Required</h4>
+                                            <p className="text-yellow-700 text-sm mt-1">
+                                                All league matches are not yet completed. Generating fixtures now might result in incorrect standings.
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="bg-gray-50 rounded-xl p-1 border border-gray-100 mb-4">
                                     {pointsTable.slice(0, 4).map((team, index) => (
-                                        <div key={team.id} className="flex items-center justify-between p-3 first:rounded-t-xl last:rounded-b-xl hover:bg-white transition-colors">
+                                        <div key={team.id} className="flex items-center justify-between p-2 first:rounded-t-lg last:rounded-b-lg hover:bg-white transition-colors">
                                             <div className="flex items-center gap-4">
                                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black ${index === 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-white border border-gray-200 text-gray-500'}`}>
                                                     {index + 1}
@@ -432,14 +490,19 @@ const TournamentBracket = () => {
                                 <div className="flex gap-4">
                                     <button
                                         onClick={() => setShowGenerationModal(false)}
-                                        className="flex-1 py-4 rounded-xl border-2 border-gray-100 text-gray-600 font-bold hover:bg-gray-50 hover:border-gray-200 transition-all"
+                                        className="flex-1 py-3 rounded-xl border-2 border-gray-100 text-gray-600 font-bold hover:bg-gray-50 hover:border-gray-200 transition-all"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         onClick={confirmGenerateKnockouts}
-                                        disabled={generating}
-                                        className="flex-1 py-4 rounded-xl bg-slate-900 text-white font-bold hover:bg-black shadow-lg shadow-slate-200 hover:shadow-xl transition-all flex justify-center items-center gap-3 disabled:opacity-70"
+                                        disabled={generating || hasUnfinishedMatches}
+                                        title={hasUnfinishedMatches ? "Complete all league matches first" : ""}
+                                        className={`flex-1 py-3 rounded-xl font-bold shadow-lg transition-all flex justify-center items-center gap-2
+                                            ${hasUnfinishedMatches
+                                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
+                                                : 'bg-slate-900 text-white hover:bg-black shadow-slate-200 hover:shadow-xl'
+                                            } disabled:opacity-70`}
                                     >
                                         {generating ? (
                                             <>

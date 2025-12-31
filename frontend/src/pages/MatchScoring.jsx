@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationModal from '../components/ConfirmationModal';
 import PlayerInfoModal from '../components/PlayerInfoModal';
 import { calculateWinProbability } from '../utils/AIModel';
+import WinProbability from '../components/WinProbability';
 
 
 const MatchScoring = () => {
@@ -448,12 +449,35 @@ const MatchScoring = () => {
     };
 
     const calculateWinProbability = (fix, balls, summ) => {
-        if (!fix || fix.status !== 'Live' || parseInt(fix.current_innings) !== 2) return null;
-        if (!summ || !summ.score1 || !summ.score2) return null;
+        // Allow Live OR Completed (to show final result)
+        // Check if we are in 2nd innings (or completed which implies 2nd innings done or abandoned, but we focus on result)
+        if (!fix || (fix.status !== 'Live' && fix.status !== 'Completed')) return null;
+
+        // 0. Handle Match Completion Explicitly
+        if (fix.status === 'Completed') {
+            if (fix.winning_team_id) {
+                // String comparison safest
+                if (String(fix.winning_team_id) === String(fix.team1_id)) {
+                    return { team1: 100, team2: 0 };
+                } else if (String(fix.winning_team_id) === String(fix.team2_id)) {
+                    return { team1: 0, team2: 100 };
+                }
+            }
+            // Match Tied or No Result? Return 50-50
+            return { team1: 50, team2: 50 };
+        }
+
+        // Must be in Innings 2 to calculate win prob (or Completed)
+        const currentInnings = parseInt(fix.current_innings);
+        if (currentInnings !== 2 && fix.status !== 'Completed') return null;
+
+        if (!summ || !summ.score1) return null; // Score1 essential
+
+        const score2 = summ.score2 || { runs: 0, wickets: 0, overs: 0 }; // Default if missing
 
         const target = summ.score1.runs + 1;
-        const currentRuns = summ.score2.runs;
-        const wicketsLost = summ.score2.wickets;
+        const currentRuns = score2.runs;
+        const wicketsLost = score2.wickets;
         const ballsBowled = balls.filter(b => parseInt(b.innings) === 2 && b.extra_type !== 'Wide' && b.extra_type !== 'NoBall').length;
         const totalBalls = (fix.total_overs || 20) * 6;
         const ballsRemaining = Math.max(0, totalBalls - ballsBowled);
@@ -500,12 +524,18 @@ const MatchScoring = () => {
         // Clamp
         prob = Math.max(1, Math.min(99, prob));
 
-        // Return the Favorite
-        if (prob >= 50) {
-            return { team: chasingTeamName, percent: Math.round(prob) };
+        // Return Probabilities
+        let team1Prob, team2Prob;
+
+        if (isChasingTeam1) {
+            team1Prob = prob;
+            team2Prob = 100 - prob;
         } else {
-            return { team: defendingTeamName, percent: 100 - Math.round(prob) };
+            team2Prob = prob;
+            team1Prob = 100 - prob;
         }
+
+        return { team1: Math.round(team1Prob), team2: Math.round(team2Prob) };
     };
 
     // --- Stats Calculations ---
@@ -976,6 +1006,14 @@ const MatchScoring = () => {
                 </div>
             </div>
 
+            {/* Live Analytics (Worm Graph & Win Prob) */}
+            <WinProbability
+                probability={winProbability}
+                team1={fixture?.Team1?.name}
+                team2={fixture?.Team2?.name}
+                allBalls={allBalls}
+                fixture={fixture}
+            />
 
             {/* Segmented Control Tabs */}
             <div className="flex justify-center mb-8">

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import api from '../api/axios';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ReTooltip, Legend } from 'recharts';
-import { FiPieChart } from 'react-icons/fi';
+import { FiPieChart, FiActivity } from 'react-icons/fi';
+import SquadAnalysisCard from '../components/SquadAnalysisCard';
 
 const Analytics = () => {
     const [data, setData] = useState(null);
@@ -195,6 +196,24 @@ const Analytics = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Squad Analysis Cards (Smart Report) */}
+            {data.squadAnalysis && data.squadAnalysis.length > 0 && (
+                <div className="mb-8">
+                    <div className="px-6 py-4 mb-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-white/10">
+                        <h3 className="font-bold text-xl text-deep-blue dark:text-white flex items-center gap-2">
+                            <FiActivity className="text-green-500" /> Smart Squad Reports
+                        </h3>
+                        <p className="text-gray-500 text-sm">AI-generated analysis of team balance and insights.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {data.squadAnalysis.map(team => (
+                            <SquadAnalysisCard key={team.teamId} team={team} />
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Team Balance Heatmap */}
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-white/10 overflow-hidden mb-8">

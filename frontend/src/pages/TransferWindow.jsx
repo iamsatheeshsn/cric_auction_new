@@ -4,7 +4,8 @@ import Layout from '../components/Layout';
 import api from '../api/axios';
 import { toast } from 'react-toastify';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiRefreshCw, FiArrowRight, FiCheck, FiX, FiFilter, FiSearch, FiDollarSign, FiRepeat, FiUser } from 'react-icons/fi';
+import { FiRefreshCw, FiArrowRight, FiCheck, FiX, FiFilter, FiSearch, FiDollarSign, FiRepeat, FiUser, FiCpu } from 'react-icons/fi';
+import SquadAnalysisModal from '../components/SquadAnalysisModal';
 
 const TransferWindow = () => {
     const { auctionId } = useParams();
@@ -31,6 +32,7 @@ const TransferWindow = () => {
     const [selectedMyPlayer, setSelectedMyPlayer] = useState(null);
     const [offerAmount, setOfferAmount] = useState('');
     const [tradeNotes, setTradeNotes] = useState('');
+    const [showAnalysisModal, setShowAnalysisModal] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -182,20 +184,30 @@ const TransferWindow = () => {
                                 </p>
                             </div>
 
-                            {/* Team Selector */}
-                            <div className="flex items-center gap-3 bg-gray-50 p-2 rounded-2xl border border-gray-200">
-                                <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-sm border border-gray-100">
-                                    <FiUser className="text-gray-400" />
-                                </div>
-                                <div className="flex flex-col pr-2">
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Managing As</span>
-                                    <select
-                                        value={myTeamId || ''}
-                                        onChange={(e) => setMyTeamId(Number(e.target.value))}
-                                        className="bg-transparent font-bold text-gray-900 text-sm focus:outline-none cursor-pointer"
-                                    >
-                                        {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                    </select>
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={() => setShowAnalysisModal(true)}
+                                    className="flex items-center gap-2 bg-white text-blue-600 px-4 py-2.5 rounded-xl font-bold text-sm border border-blue-100 shadow-sm hover:shadow-md hover:bg-blue-50 transition-all"
+                                >
+                                    <FiCpu size={18} />
+                                    <span className="hidden md:inline">Smart Report</span>
+                                </button>
+
+                                {/* Team Selector */}
+                                <div className="flex items-center gap-3 bg-gray-50 p-2 rounded-2xl border border-gray-200">
+                                    <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-sm border border-gray-100">
+                                        <FiUser className="text-gray-400" />
+                                    </div>
+                                    <div className="flex flex-col pr-2">
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Managing As</span>
+                                        <select
+                                            value={myTeamId || ''}
+                                            onChange={(e) => setMyTeamId(Number(e.target.value))}
+                                            className="bg-transparent font-bold text-gray-900 text-sm focus:outline-none cursor-pointer"
+                                        >
+                                            {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
 
@@ -453,6 +465,13 @@ const TransferWindow = () => {
                 </div>
 
                 {/* Trade Modal - Compact Design */}
+                <SquadAnalysisModal
+                    show={showAnalysisModal}
+                    onClose={() => setShowAnalysisModal(false)}
+                    auctionId={auctionId}
+                    teamId={myTeamId}
+                />
+
                 <AnimatePresence>
                     {showTradeModal && (
                         <motion.div
