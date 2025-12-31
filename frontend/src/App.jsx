@@ -21,6 +21,7 @@ import Settings from './pages/Settings';
 import MatchAnalytics from './pages/MatchAnalytics';
 import TransferWindow from './pages/TransferWindow';
 import BroadcastView from './pages/BroadcastView';
+import SocialMediaTools from './pages/SocialMediaTools';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ThemeProvider } from './context/ThemeContext';
 
@@ -60,7 +61,11 @@ function App() {
 
             {/* Broadcast Route (Public/Protected?) - Keeping protected for now, usually would be distinct */}
             <Route path="/broadcast/:fixtureId" element={<ProtectedRoute><BroadcastView /></ProtectedRoute>} />
+
+            {/* Social Media Studio */}
+            <Route path="/social-tools" element={<ProtectedRoute><SocialMediaTools /></ProtectedRoute>} />
           </Routes>
+
         </div>
       </Router>
     </ThemeProvider>

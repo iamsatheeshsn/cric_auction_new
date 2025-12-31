@@ -66,6 +66,10 @@ const Sidebar = () => {
                                 <FiLock className="text-lg" />
                                 <span>Change Password</span>
                             </Link>
+                            <Link to="/social-tools" className="flex items-center gap-4 w-full px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">
+                                <FiSettings className="text-lg" />
+                                <span>Social Studio</span>
+                            </Link>
                             <button
                                 onClick={toggleTheme}
                                 className="flex items-center gap-4 w-full px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all"
