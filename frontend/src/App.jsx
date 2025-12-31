@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import TournamentBracket from './pages/TournamentBracket';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Dashboard from './pages/Dashboard';
@@ -49,9 +50,11 @@ function App() {
             <Route path="/stats" element={<ProtectedRoute><Stats /></ProtectedRoute>} />
             <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
             <Route path="/points" element={<ProtectedRoute><PointsTable /></ProtectedRoute>} />
+            <Route path="/auction/:id/points" element={<ProtectedRoute><PointsTable /></ProtectedRoute>} />
             <Route path="/compare" element={<ProtectedRoute><PlayerComparison /></ProtectedRoute>} />
 
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/tournament-bracket/:auctionId" element={<ProtectedRoute><TournamentBracket /></ProtectedRoute>} />
 
             {/* Broadcast Route (Public/Protected?) - Keeping protected for now, usually would be distinct */}
             <Route path="/broadcast/:fixtureId" element={<ProtectedRoute><BroadcastView /></ProtectedRoute>} />

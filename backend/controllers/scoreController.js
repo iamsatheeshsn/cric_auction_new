@@ -171,10 +171,28 @@ exports.updateMatchState = async (req, res) => {
             const calcScore = (inn) => balls.filter(b => b.innings === inn).reduce((acc, b) => ({
                 runs: acc.runs + b.runs_scored + b.extras,
                 wickets: acc.wickets + (b.is_wicket ? 1 : 0)
+                // We need to recalc overs properly or pass it.
+                // Wait, score1/score2 in previous code had 'overs'. But here we are recalculating.
+                // Simpler: Reuse calculations from getMatchScoringDetails logic? No, duplicate logic is safer for robust controller.
+                // Let's rely on the Request Body for total overs or just recalc basics.
+                // Actually, the previous code (lines 171-177) calculated runs/wickets but NOT overs.
+                // I need to calculate overs here for the stats.
             }), { runs: 0, wickets: 0 });
 
-            const score1 = calcScore(1);
-            const score2 = calcScore(2);
+            // Helper to get legal balls and overs
+            const getOvers = (inn) => {
+                const innBalls = balls.filter(b => b.innings === inn);
+                let legal = 0;
+                innBalls.forEach(b => {
+                    if (b.extra_type !== 'Wide' && b.extra_type !== 'NoBall') legal++;
+                });
+                return parseFloat(Math.floor(legal / 6) + '.' + (legal % 6));
+            };
+
+            const s1 = calcScore(1);
+            s1.overs = getOvers(1);
+            const s2 = calcScore(2);
+            s2.overs = getOvers(2);
 
             let resultText = '';
             let winningTeamId = null;
@@ -183,7 +201,6 @@ exports.updateMatchState = async (req, res) => {
             const team2 = fullFixture.Team2;
 
             // Determine who batted first
-            // If Toss Winner batted, they are Inn 1. If Toss Winner bowled, opponent is Inn 1.
             let batFirstId = null;
             if (fixture.toss_decision === 'Bat') {
                 batFirstId = fixture.toss_winner_id;
@@ -194,13 +211,11 @@ exports.updateMatchState = async (req, res) => {
             const batFirstTeam = (batFirstId === team1.id) ? team1 : team2;
             const batSecondTeam = (batFirstId === team1.id) ? team2 : team1;
 
-            if (score2.runs > score1.runs) {
-                // Bat Second Won
-                resultText = `${batSecondTeam.name} won by ${10 - score2.wickets} wickets`;
+            if (s2.runs > s1.runs) {
+                resultText = `${batSecondTeam.name} won by ${10 - s2.wickets} wickets`;
                 winningTeamId = batSecondTeam.id;
-            } else if (score1.runs > score2.runs) {
-                // Bat First Won
-                resultText = `${batFirstTeam.name} won by ${score1.runs - score2.runs} runs`;
+            } else if (s1.runs > s2.runs) {
+                resultText = `${batFirstTeam.name} won by ${s1.runs - s2.runs} runs`;
                 winningTeamId = batFirstTeam.id;
             } else {
                 resultText = "Match Tied";
@@ -210,67 +225,181 @@ exports.updateMatchState = async (req, res) => {
             fixture.result_description = resultText;
             fixture.winning_team_id = winningTeamId;
 
-            // Calculate MVP if match is completed and result is determined
-            if (fixture.status === 'Completed' && fixture.result_description) {
-                // Check if MVP is already assigned
-                if (!fixture.player_of_match_id) {
-                    try {
-                        const allBalls = await ScoreBall.findAll({ where: { fixture_id: fixtureId } });
-                        const playerPerformance = {};
-
-                        allBalls.forEach(ball => {
-                            // Batting Points
-                            if (ball.striker_id) {
-                                if (!playerPerformance[ball.striker_id]) playerPerformance[ball.striker_id] = 0;
-                                playerPerformance[ball.striker_id] += ball.runs_scored * 1; // 1 point per run
-                                if (ball.runs_scored === 4) playerPerformance[ball.striker_id] += 1; // Bonus
-                                if (ball.runs_scored === 6) playerPerformance[ball.striker_id] += 2; // Bonus
-                            }
-
-                            // Bowling Points
-                            if (ball.bowler_id) {
-                                if (!playerPerformance[ball.bowler_id]) playerPerformance[ball.bowler_id] = 0;
-                                if (ball.is_wicket && ball.wicket_type !== 'Run Out') {
-                                    playerPerformance[ball.bowler_id] += 25; // 25 points per wicket
-                                }
-                                if (ball.runs_scored === 0 && !ball.extras) {
-                                    playerPerformance[ball.bowler_id] += 1; // Dot ball bonus
-                                }
-                            }
-
-                            // Fielding Points (Catch/Run Out)
-                            if (ball.fielder_id) {
-                                if (!playerPerformance[ball.fielder_id]) playerPerformance[ball.fielder_id] = 0;
-                                // 10 points for Catch/RunOut/Stumping
-                                playerPerformance[ball.fielder_id] += 10;
-                            }
-                        });
-
-                        // Find Highest
-                        let maxPoints = -1;
-                        let mvpId = null;
-                        for (const pid in playerPerformance) {
-                            if (playerPerformance[pid] > maxPoints) {
-                                maxPoints = playerPerformance[pid];
-                                mvpId = pid;
-                            }
+            // MVP Calculation (Existing Logic - Preserved)
+            if (!fixture.player_of_match_id) {
+                // ... (MVP logic implied/preserved if I don't overwrite it?
+                // I am overwriting it. I'll condense it for brevity or copy it.
+                // Since I am replacing a huge chunk, I MUST copy MVP logic or it gets lost.
+                // MVP is important.
+                try {
+                    const playerPerformance = {};
+                    balls.forEach(ball => {
+                        if (ball.striker_id) {
+                            playerPerformance[ball.striker_id] = (playerPerformance[ball.striker_id] || 0) + ball.runs_scored + (ball.runs_scored == 4 ? 1 : 0) + (ball.runs_scored === 6 ? 2 : 0);
                         }
-
-                        if (mvpId) {
-                            fixture.player_of_match_id = mvpId;
+                        if (ball.bowler_id) {
+                            if (ball.is_wicket && ball.wicket_type !== 'Run Out') playerPerformance[ball.bowler_id] = (playerPerformance[ball.bowler_id] || 0) + 25;
+                            if (ball.runs_scored === 0 && !ball.extras) playerPerformance[ball.bowler_id] = (playerPerformance[ball.bowler_id] || 0) + 1;
                         }
-                    } catch (calcError) {
-                        console.error("MVP Calc Failed", calcError);
-                    }
-                }
+                        if (ball.fielder_id) playerPerformance[ball.fielder_id] = (playerPerformance[ball.fielder_id] || 0) + 10;
+                    });
+                    let maxP = -1; let mvp = null;
+                    for (const pid in playerPerformance) { if (playerPerformance[pid] > maxP) { maxP = playerPerformance[pid]; mvp = pid; } }
+                    if (mvp) fixture.player_of_match_id = mvp;
+                } catch (e) { console.error("MVP Error", e); }
             }
-        }
+
+            // SAVE SCORES FOR NRR
+            if (batFirstId === team1.id) {
+                fixture.team1_runs = s1.runs; fixture.team1_wickets = s1.wickets; fixture.team1_overs = s1.overs;
+                fixture.team2_runs = s2.runs; fixture.team2_wickets = s2.wickets; fixture.team2_overs = s2.overs;
+            } else {
+                fixture.team2_runs = s1.runs; fixture.team2_wickets = s1.wickets; fixture.team2_overs = s1.overs;
+                fixture.team1_runs = s2.runs; fixture.team1_wickets = s2.wickets; fixture.team1_overs = s2.overs;
+            }
+        } // End of Completed Block
 
         await fixture.save();
+
+        // RECALCULATE POINTS TABLE
+        if (status === 'Completed' && fixture.auction_id) {
+            await recalculateAuctionPoints(fixture.auction_id);
+        }
+
         res.json({ message: 'Match state updated', fixture });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error updating match state' });
+    }
+};
+
+// Helper: Recalculate Points Table for an Auction
+const recalculateAuctionPoints = async (auctionId) => {
+    try {
+        const { Fixture, PointsTable, Team } = require('../models');
+
+        // 1. Fetch all teams in this auction
+        const teams = await Team.findAll({ where: { auction_id: auctionId } });
+
+        // 2. Fetch all COMPLETED fixtures
+        const fixtures = await Fixture.findAll({
+            where: { auction_id: auctionId, status: 'Completed' }
+        });
+
+        // 3. Reset/Init Stats Map
+        const stats = {};
+        teams.forEach(t => {
+            stats[t.id] = {
+                team_id: t.id,
+                auction_id: auctionId,
+                played: 0, won: 0, lost: 0, tied: 0, no_result: 0, points: 0,
+                runs_for: 0, overs_for: 0,
+                runs_against: 0, overs_against: 0
+            };
+        });
+
+        // 4. Aggregate Stats
+        fixtures.forEach(f => {
+            const t1 = stats[f.team1_id];
+            const t2 = stats[f.team2_id];
+            if (!t1 || !t2) return; // Should not happen
+
+            t1.played++;
+            t2.played++;
+
+            // Accumulate Runs/Overs for NRR
+            // Helper to convert 19.4 -> 19.666
+            const getBalls = (overs) => {
+                const o = Math.floor(overs);
+                const b = Math.round((overs - o) * 10);
+                return (o * 6) + b;
+            };
+
+            // Team 1 Stats
+            t1.runs_for += f.team1_runs;
+            t1.overs_for += getBalls(f.team1_overs); // Accumulate balls temporarily
+            t1.runs_against += f.team2_runs;
+            t1.overs_against += getBalls(f.team2_overs);
+
+            // Team 2 Stats
+            t2.runs_for += f.team2_runs;
+            t2.overs_for += getBalls(f.team2_overs);
+            t2.runs_against += f.team1_runs;
+            t2.overs_against += getBalls(f.team1_overs);
+
+            // Adjust Overs if All Out (For NRR, if all out, overs = total overs of match usually, but standard simple NRR uses actual overs faced unless all out)
+            // Standard NRR Rule: If a team is all out, runs_scored divided by FULL QUOTA of overs.
+            // We need to check wickets.
+            // Fixture has total_overs.
+            const fullQuotaBalls = (f.total_overs || 20) * 6;
+
+            if (f.team1_wickets >= 10) {
+                // Remove the actual balls faced and add full quota
+                t1.overs_for = (t1.overs_for - getBalls(f.team1_overs)) + fullQuotaBalls;
+
+                // For Team 2's "Overs Against", it counts as full quota too corresponding to Team 1 batting
+                t2.overs_against = (t2.overs_against - getBalls(f.team1_overs)) + fullQuotaBalls;
+            }
+
+            if (f.team2_wickets >= 10) {
+                t2.overs_for = (t2.overs_for - getBalls(f.team2_overs)) + fullQuotaBalls;
+                t1.overs_against = (t1.overs_against - getBalls(f.team2_overs)) + fullQuotaBalls;
+            }
+
+            // Points
+            if (f.winning_team_id === f.team1_id) {
+                t1.won++;
+                t1.points += 2;
+                t2.lost++;
+            } else if (f.winning_team_id === f.team2_id) {
+                t2.won++;
+                t2.points += 2;
+                t1.lost++;
+            } else {
+                t1.tied++;
+                t1.points += 1;
+                t2.tied++;
+                t2.points += 1;
+            }
+        });
+
+        // 5. Calculate Final NRR and Upsert
+        for (const tid in stats) {
+            const s = stats[tid];
+
+            // NRR = (RunsFor / OversFor) - (RunsAgainst / OversAgainst)
+            // Overs are in balls currently
+            const oversFor = s.overs_for > 0 ? s.overs_for / 6 : 0;
+            const oversAgainst = s.overs_against > 0 ? s.overs_against / 6 : 0;
+
+            const rateFor = oversFor > 0 ? s.runs_for / oversFor : 0;
+            const rateAgainst = oversAgainst > 0 ? s.runs_against / oversAgainst : 0;
+
+            s.nrr = parseFloat((rateFor - rateAgainst).toFixed(3));
+
+            // Store Overs back as Standard Float (approx) for Display? 
+            // Actually model expects float, but let's just store the balls or standard overs.
+            // Let's store standard overs (e.g. 10.3) for display if needed, but NRR is stored directly.
+            // The model has 'overs_for' as FLOAT. I'll store actual overs (e.g. 10.5).
+            const ballsToOvers = (b) => Math.floor(b / 6) + parseFloat(((b % 6) / 10).toFixed(1));
+            s.overs_for = ballsToOvers(s.overs_for);
+            s.overs_against = ballsToOvers(s.overs_against);
+
+            // Upsert
+            const [record, created] = await PointsTable.findOrCreate({
+                where: { auction_id: auctionId, team_id: s.team_id },
+                defaults: s
+            });
+
+            if (!created) {
+                await record.update(s);
+            }
+        }
+
+        console.log(`Points Table Updated for Auction ${auctionId}`);
+
+    } catch (err) {
+        console.error("Points Table Calc Error:", err);
     }
 };
 

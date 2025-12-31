@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiPlus, FiCalendar, FiMapPin, FiActivity, FiX, FiInfo, FiEdit, FiTrash2, FiCopy } from 'react-icons/fi';
+import { FiPlus, FiCalendar, FiMapPin, FiActivity, FiX, FiInfo, FiEdit, FiTrash2, FiCopy, FiAward } from 'react-icons/fi';
 import api from '../api/axios';
 import { toast } from 'react-toastify';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -309,17 +309,31 @@ const Auctions = () => {
                                         Teams
                                     </Link>
                                     {auction.status === 'Completed' ? (
-                                        <Link to={`/fixtures/${auction.id}`} className="col-span-2 flex items-center justify-center px-4 py-2 rounded-lg bg-gray-50 text-gray-700 font-semibold text-xs hover:bg-gray-100 border border-gray-200 transition-colors">
-                                            Fixtures
-                                        </Link>
+                                        <>
+                                            <Link to={`/fixtures/${auction.id}`} className="flex items-center justify-center px-4 py-2 rounded-lg bg-gray-50 text-gray-700 font-semibold text-xs hover:bg-gray-100 border border-gray-200 transition-colors">
+                                                Fixtures
+                                            </Link>
+                                            <Link to={`/tournament-bracket/${auction.id}`} className="flex items-center justify-center px-4 py-2 rounded-lg bg-gray-50 text-gray-700 font-semibold text-xs hover:bg-gray-100 border border-gray-200 transition-colors">
+                                                Bracket
+                                            </Link>
+                                        </>
                                     ) : (
-                                        <button
-                                            disabled
-                                            title="Fixtures are available only after auction completion"
-                                            className="col-span-2 flex items-center justify-center px-4 py-2 rounded-lg bg-gray-100 text-gray-400 font-semibold text-xs border border-gray-200 cursor-not-allowed"
-                                        >
-                                            Fixtures
-                                        </button>
+                                        <>
+                                            <button
+                                                disabled
+                                                title="Fixtures are available only after auction completion"
+                                                className="flex items-center justify-center px-4 py-2 rounded-lg bg-gray-100 text-gray-400 font-semibold text-xs border border-gray-200 cursor-not-allowed"
+                                            >
+                                                Fixtures
+                                            </button>
+                                            <button
+                                                disabled
+                                                title="Bracket is available only after auction completion"
+                                                className="flex items-center justify-center px-4 py-2 rounded-lg bg-gray-100 text-gray-400 font-semibold text-xs border border-gray-200 cursor-not-allowed"
+                                            >
+                                                Bracket
+                                            </button>
+                                        </>
                                     )}
                                     {auction.status === 'Completed' ? (
                                         <button

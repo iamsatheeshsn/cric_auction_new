@@ -5,12 +5,20 @@ const Team = require('./Team')(sequelize);
 const Player = require('./Player')(sequelize);
 const Fixture = require('./Fixture')(sequelize);
 const ScoreBall = require('./ScoreBall')(sequelize);
+const PointsTable = require('./PointsTable')(sequelize);
 
 // Associations
 
 const AuctionPlayer = require('./AuctionPlayer')(sequelize);
 
 // Associations
+
+// Points Table Associations
+Auction.hasMany(PointsTable, { foreignKey: 'auction_id', onDelete: 'CASCADE' });
+PointsTable.belongsTo(Auction, { foreignKey: 'auction_id' });
+
+Team.hasOne(PointsTable, { foreignKey: 'team_id', onDelete: 'CASCADE' });
+PointsTable.belongsTo(Team, { foreignKey: 'team_id' });
 
 // Auction has many Teams
 Auction.hasMany(Team, { foreignKey: 'auction_id', onDelete: 'CASCADE' });
@@ -64,5 +72,6 @@ module.exports = {
     Player,
     Fixture,
     AuctionPlayer,
-    ScoreBall
+    ScoreBall,
+    PointsTable
 };
