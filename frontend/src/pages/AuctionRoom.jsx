@@ -3,7 +3,7 @@ import { useSocket } from '../context/SocketContext';
 import Layout from '../components/Layout';
 import Sidebar from '../components/Sidebar';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiCheckCircle, FiUser, FiArrowRight, FiSkipForward, FiMonitor, FiActivity, FiDollarSign, FiUsers, FiCpu, FiInfo, FiExternalLink } from 'react-icons/fi';
+import { FiCheckCircle, FiUser, FiArrowRight, FiSkipForward, FiMonitor, FiActivity, FiDollarSign, FiUsers, FiCpu, FiInfo, FiExternalLink, FiMenu } from 'react-icons/fi';
 import api from '../api/axios';
 import { getAuctionAdvice } from '../utils/AIModel';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -61,6 +61,7 @@ const AuctionRoom = () => {
     const [currentPlayer, setCurrentPlayer] = useState(null);
     const [currentBid, setCurrentBid] = useState(0);
     const [currentBidder, setCurrentBidder] = useState(null);
+    const [lastAction, setLastAction] = useState(null);
 
     // Filtered lists
     const [unsoldPlayers, setUnsoldPlayers] = useState([]);
@@ -80,6 +81,7 @@ const AuctionRoom = () => {
     const [unsoldPoolOpen, setUnsoldPoolOpen] = useState(false);
     const [revisitLoading, setRevisitLoading] = useState(null);
     const [selectedTeamViewer, setSelectedTeamViewer] = useState(null);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const processingRef = useRef(false);
 
@@ -532,7 +534,7 @@ const AuctionRoom = () => {
 
     return (
         <div className="flex h-screen overflow-hidden bg-[#F8FAFC]">
-            <Sidebar />
+            <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
             <div className="flex-1 flex flex-col relative min-w-0 overflow-hidden">
                 <AnimatePresence>
                     {selectedTeamViewer && <TeamDetailsModal team={selectedTeamViewer} onClose={() => setSelectedTeamViewer(null)} />}
@@ -546,6 +548,12 @@ const AuctionRoom = () => {
                 {/* Top Stats Bar */}
                 <div className="bg-white/80 backdrop-blur-md border-b border-gray-200 p-3 sticky top-0 z-30 flex justify-between items-center shadow-sm gap-2">
                     <div className="flex items-center gap-3 min-w-0">
+                        <button
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg md:hidden"
+                        >
+                            <FiMenu size={24} />
+                        </button>
                         <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200 shrink-0">
                             <FiActivity size={20} />
                         </div>
@@ -632,17 +640,17 @@ const AuctionRoom = () => {
                 </div>
 
                 {/* Main Content Area */}
-                <div className="flex flex-1 gap-6 overflow-hidden p-6">
+                <div className="flex flex-col lg:flex-row flex-1 gap-6 overflow-y-auto lg:overflow-hidden p-4 md:p-6 pb-20 lg:pb-6">
                     {/* LEFT: Player Spotlight Area */}
-                    <div className="flex-1 bg-white rounded-3xl shadow-xl border border-white/40 flex flex-col relative overflow-hidden ring-1 ring-black/5">
+                    <div className="flex-1 bg-white rounded-3xl shadow-xl border border-white/40 flex flex-col relative overflow-hidden ring-1 ring-black/5 min-h-[600px] lg:min-h-0">
                         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
 
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
                             {currentPlayer ? (
                                 <div className="h-full flex flex-col">
-                                    <div className="flex gap-8 items-start h-full">
+                                    <div className="flex flex-col lg:flex-row gap-8 items-start h-full">
                                         {/* Player Card Image */}
-                                        <div className="w-5/12 h-full max-h-[600px] relative rounded-3xl overflow-hidden shadow-2xl bg-gray-900 group">
+                                        <div className="w-full lg:w-5/12 h-[400px] lg:h-full max-h-[400px] lg:max-h-[600px] relative rounded-3xl overflow-hidden shadow-2xl bg-gray-900 group shrink-0">
                                             {currentPlayer.image_path ? (
                                                 <img src={getImageUrl(currentPlayer.image_path)} className="w-full h-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-105" />
                                             ) : (
@@ -793,7 +801,7 @@ const AuctionRoom = () => {
                     </div>
 
                     {/* RIGHT: Teams Panel */}
-                    <div className="w-[400px] flex flex-col gap-4">
+                    <div className="w-full lg:w-[400px] flex flex-col gap-4">
 
                         {/* AI Advisor Panel */}
                         {currentBidder && (
