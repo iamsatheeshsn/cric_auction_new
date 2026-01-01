@@ -640,9 +640,9 @@ const AuctionRoom = () => {
                 </div>
 
                 {/* Main Content Area */}
-                <div className="flex flex-col lg:flex-row flex-1 gap-6 overflow-y-auto lg:overflow-hidden p-4 md:p-6 pb-20 lg:pb-6">
-                    {/* LEFT: Player Spotlight Area */}
-                    <div className="flex-1 bg-white rounded-3xl shadow-xl border border-white/40 flex flex-col relative overflow-hidden ring-1 ring-black/5 min-h-[600px] lg:min-h-0">
+                <div className="flex flex-col flex-1 gap-6 overflow-y-auto p-4 md:p-6 pb-20">
+                    {/* TOP: Player Spotlight Area - Full Width */}
+                    <div className="flex-none bg-white rounded-3xl shadow-xl border border-white/40 flex flex-col relative overflow-hidden ring-1 ring-black/5 min-h-[600px]">
                         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
 
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
@@ -679,66 +679,140 @@ const AuctionRoom = () => {
                                             </div>
                                         </div>
 
-                                        {/* Bidding Controls */}
-                                        <div className="flex-1 flex flex-col justify-center gap-8 py-4">
+                                        {/* Bidding Controls Area */}
+                                        <div className="flex-1 min-w-0 py-4 h-full">
+                                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 h-full">
 
+                                                {/* Col 1: Bid Status */}
+                                                <div className="flex flex-col h-full">
+                                                    <div className="bg-gradient-to-br from-slate-50 to-white p-6 2xl:p-8 rounded-3xl border border-slate-100 shadow-lg relative overflow-hidden h-full flex flex-col justify-center">
+                                                        <div className="absolute top-0 right-0 p-4 opacity-5"><FiDollarSign size={160} /></div>
+                                                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2 relative z-10">Current Bid Amount</p>
+                                                        <div className="flex items-baseline gap-4 relative z-10">
+                                                            <p className="text-6xl 2xl:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-800 to-slate-600 tracking-tighter">
+                                                                ₹{(currentBid || 0).toLocaleString()}
+                                                            </p>
+                                                        </div>
 
-
-                                            <div className="bg-gradient-to-br from-slate-50 to-white p-8 rounded-3xl border border-slate-100 shadow-lg relative overflow-hidden">
-                                                <div className="absolute top-0 right-0 p-4 opacity-5"><FiDollarSign size={120} /></div>
-                                                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2 relative z-10">Current Bid Amount</p>
-                                                <div className="flex items-baseline gap-4 relative z-10">
-                                                    <p className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-800 to-slate-600 tracking-tighter">
-                                                        ₹{(currentBid || 0).toLocaleString()}
-                                                    </p>
+                                                        {currentBidder ? (
+                                                            <div className="mt-8 flex items-center gap-4 bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+                                                                <div className="w-12 h-12 rounded-full bg-white shadow-sm overflow-hidden p-0.5 shrink-0">
+                                                                    {currentBidder.image_path && <img src={getImageUrl(currentBidder.image_path)} className="w-full h-full object-contain rounded-full" />}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs text-blue-400 font-bold uppercase tracking-wider">Held By</p>
+                                                                    <p className="text-xl font-bold text-blue-900 leading-none">{currentBidder.short_name}</p>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="mt-8 inline-block px-5 py-3 bg-gray-100 rounded-xl text-gray-400 text-sm font-bold">
+                                                                Waiting for opening bid...
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
 
-                                                {currentBidder ? (
-                                                    <div className="mt-4 flex items-center gap-3 bg-blue-50/50 p-3 rounded-2xl border border-blue-100">
-                                                        <div className="w-10 h-10 rounded-full bg-white shadow-sm overflow-hidden p-0.5">
-                                                            {currentBidder.image_path && <img src={getImageUrl(currentBidder.image_path)} className="w-full h-full object-contain rounded-full" />}
+                                                {/* Col 2: Actions & Quick Bid */}
+                                                <div className="flex flex-col gap-4 h-full overflow-y-auto custom-scrollbar pr-2">
+
+                                                    {/* Quick Bid Grid */}
+                                                    <div>
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Quick Bid Actions</p>
                                                         </div>
-                                                        <div>
-                                                            <p className="text-xs text-blue-400 font-bold uppercase tracking-wider">Held By</p>
-                                                            <p className="text-lg font-bold text-blue-900 leading-none">{currentBidder.short_name}</p>
+                                                        <div className="grid grid-cols-1 2xl:grid-cols-2 gap-2">
+                                                            {teams.map(team => {
+                                                                const canBid = team.purse_remaining >= currentBid;
+                                                                const isCurrent = currentBidder?.id === team.id;
+
+                                                                return (
+                                                                    <div
+                                                                        key={team.id}
+                                                                        className={`
+                                                                            flex items-center gap-2 p-2 rounded-xl border transition-all
+                                                                            ${isCurrent
+                                                                                ? 'bg-green-50 border-green-500 shadow-green-100 shadow-sm'
+                                                                                : canBid
+                                                                                    ? 'bg-white border-slate-200 hover:border-blue-300'
+                                                                                    : 'bg-slate-50 border-slate-100 opacity-60 grayscale'
+                                                                            }
+                                                                        `}
+                                                                    >
+                                                                        <div className="w-7 h-7 rounded-full bg-white border border-gray-100 p-0.5 overflow-hidden shadow-sm shrink-0">
+                                                                            {team.image_path ? <img src={getImageUrl(team.image_path)} className="w-full h-full object-contain rounded-full" /> : <div className="w-full h-full bg-gray-100 flex items-center justify-center text-[10px]">{team.short_name[0]}</div>}
+                                                                        </div>
+
+                                                                        <div className="flex flex-col flex-1 min-w-0">
+                                                                            <span className={`text-[10px] font-black truncate ${isCurrent ? 'text-green-700' : 'text-slate-700'}`}>{team.short_name}</span>
+                                                                            <span className="text-[9px] font-bold text-slate-400">₹{team.purse_remaining.toLocaleString()}</span>
+                                                                        </div>
+
+                                                                        {isCurrent ? (
+                                                                            <button
+                                                                                onClick={() => handleSell(team.id)}
+                                                                                className="shrink-0 whitespace-nowrap px-2 py-1 bg-green-500 hover:bg-green-600 text-white text-[9px] font-bold rounded-lg shadow-sm transition-colors uppercase tracking-wide"
+                                                                            >
+                                                                                Confirm
+                                                                            </button>
+                                                                        ) : (
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    addToHistory();
+                                                                                    setCurrentBidder(team);
+                                                                                    syncLiveBid(currentBid, team.id);
+                                                                                }}
+                                                                                disabled={!canBid}
+                                                                                className={`
+                                                                                    shrink-0 whitespace-nowrap px-2 py-1 text-[9px] font-bold rounded-lg transition-colors uppercase tracking-wide
+                                                                                    ${canBid
+                                                                                        ? 'bg-blue-100 hover:bg-blue-200 text-blue-700'
+                                                                                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                                                    }
+                                                                                `}
+                                                                            >
+                                                                                Bid
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
                                                         </div>
                                                     </div>
-                                                ) : (
-                                                    <div className="mt-4 inline-block px-4 py-2 bg-gray-100 rounded-xl text-gray-400 text-sm font-bold">
-                                                        Waiting for opening bid...
+
+                                                    {/* Main Actions - Aligned Bottom Right */}
+                                                    <div className="flex flex-col gap-3">
+                                                        <div className="flex gap-3">
+                                                            {bidHistory.length > 0 && (
+                                                                <button
+                                                                    onClick={handleUndo}
+                                                                    className="flex-1 py-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl font-bold transition-all text-sm uppercase tracking-wide flex items-center justify-center gap-2 border border-transparent hover:border-red-100"
+                                                                >
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                                                    </svg>
+                                                                    Undo
+                                                                </button>
+                                                            )}
+                                                            <button
+                                                                onClick={handleUnsold}
+                                                                className="flex-1 py-3 border-2 border-red-100 text-red-500 hover:bg-red-50 hover:border-red-200 rounded-2xl font-black text-sm transition-all shadow-sm hover:shadow-md uppercase tracking-wide"
+                                                            >
+                                                                Unsold
+                                                            </button>
+                                                        </div>
+
+                                                        <button
+                                                            onClick={() => handleBidIncrease(auction?.bid_increase_by || 100)}
+                                                            disabled={!currentBidder}
+                                                            className={`w-full py-4 rounded-2xl font-black text-lg transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${!currentBidder
+                                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-2 border-gray-100'
+                                                                : 'bg-gradient-to-r from-deep-blue to-blue-700 text-white hover:shadow-blue-200 hover:scale-[1.02]'
+                                                                }`}
+                                                        >
+                                                            <FiArrowRight /> Bid +{auction?.bid_increase_by || 100}
+                                                        </button>
                                                     </div>
-                                                )}
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-4">
-                                                {bidHistory.length > 0 && (
-                                                    <button
-                                                        onClick={handleUndo}
-                                                        className="col-span-2 py-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl font-bold transition-all text-sm uppercase tracking-wide flex items-center justify-center gap-2"
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                                                        </svg>
-                                                        Undo Last Bid
-                                                    </button>
-                                                )}
-
-                                                <button
-                                                    onClick={handleUnsold}
-                                                    className="py-4 border-2 border-red-100 text-red-500 hover:bg-red-50 hover:border-red-200 rounded-2xl font-black text-lg transition-all shadow-sm hover:shadow-md active:scale-95 uppercase tracking-wide"
-                                                >
-                                                    Unsold
-                                                </button>
-                                                <button
-                                                    onClick={() => handleBidIncrease(auction?.bid_increase_by || 100)}
-                                                    disabled={!currentBidder}
-                                                    className={`py-4 rounded-2xl font-black text-lg transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${!currentBidder
-                                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-2 border-gray-100'
-                                                        : 'bg-gradient-to-r from-deep-blue to-blue-700 text-white hover:shadow-blue-200 hover:scale-[1.02]'
-                                                        }`}
-                                                >
-                                                    <FiArrowRight /> Bid +{auction?.bid_increase_by || 100}
-                                                </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -800,15 +874,15 @@ const AuctionRoom = () => {
                         </div>
                     </div>
 
-                    {/* RIGHT: Teams Panel */}
-                    <div className="w-full lg:w-[400px] flex flex-col gap-4">
+                    {/* BOTTOM: Teams Panel - Full Width Grid */}
+                    <div className="w-full flex flex-col gap-4">
 
-                        {/* AI Advisor Panel */}
+                        {/* AI Advisor Panel - Width constrained to look good in vertical flow */}
                         {currentBidder && (
                             <motion.div
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-3xl p-5 shadow-lg border border-white/20 text-white relative overflow-hidden"
+                                className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-3xl p-5 shadow-lg border border-white/20 text-white relative overflow-hidden w-full"
                             >
                                 <div className="absolute top-0 right-0 p-4 opacity-10"><FiCpu size={60} /></div>
                                 <div className="relative z-10">
@@ -831,16 +905,16 @@ const AuctionRoom = () => {
                                             auction
                                         );
                                         return (
-                                            <>
-                                                <p className="font-medium text-sm leading-relaxed mb-3">"{advice?.message}"</p>
-                                                <div className="bg-black/20 rounded-xl p-3 flex justify-between items-center backdrop-blur-sm border border-white/10">
+                                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                                <p className="font-medium text-sm leading-relaxed">"{advice?.message}"</p>
+                                                <div className="bg-black/20 rounded-xl p-3 flex gap-4 items-center backdrop-blur-sm border border-white/10 shrink-0">
                                                     <div className="flex items-center gap-1 cursor-help" title="Estimated max bid to ensure you can fill all remaining squad slots">
                                                         <span className="text-xs text-indigo-200 font-bold uppercase">AI Bid Cap</span>
                                                         <FiInfo className="text-indigo-300 text-xs" />
                                                     </div>
                                                     <span className="font-mono font-bold text-cyan-300">₹{advice?.suggestedBidLimit?.toLocaleString()}</span>
                                                 </div>
-                                            </>
+                                            </div>
                                         );
                                     })()}
                                 </div>
@@ -848,16 +922,16 @@ const AuctionRoom = () => {
                         )}
 
                         <div className="flex-1 bg-white rounded-3xl shadow-xl border border-white/40 flex flex-col relative overflow-hidden ring-1 ring-black/5 flex-shrink-0">
-                            <div className="p-5 border-b border-gray-100 bg-gray-50/50 backdrop-blur-sm">
+                            <div className="p-5 border-b border-gray-100 bg-gray-50/50 backdrop-blur-sm sticky top-0 z-10">
                                 <h3 className="text-lg font-black text-slate-700 flex items-center gap-2">
                                     <FiCheckCircle className="text-green-500" /> Active Teams
                                 </h3>
                             </div>
-                            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
                                 {teams.map(team => (
                                     <div
                                         key={team.id}
-                                        className={`relative p-4 rounded-2xl border-2 transition-all duration-300 group ${currentBidder?.id === team.id
+                                        className={`relative p-3 rounded-2xl border transition-all duration-300 group flex flex-col ${currentBidder?.id === team.id
                                             ? 'bg-green-50/50 border-green-500 shadow-green-100 shadow-lg scale-[1.02] z-10'
                                             : !currentPlayer
                                                 ? 'bg-white border-transparent hover:border-gray-200'
@@ -866,33 +940,34 @@ const AuctionRoom = () => {
                                                     : 'bg-white border-gray-100 hover:border-blue-200 hover:shadow-lg'
                                             }`}
                                     >
-                                        <div className="flex items-center gap-4 mb-3">
-                                            <div className="w-14 h-14 rounded-full bg-white shadow-sm border border-gray-100 p-1 flex-shrink-0">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-gray-100 p-1 flex-shrink-0">
                                                 {team.image_path && <img src={getImageUrl(team.image_path)} className="w-full h-full object-contain rounded-full" />}
                                             </div>
                                             <div className="min-w-0 flex-1">
                                                 <div className="flex justify-between items-start">
-                                                    <div className="min-w-0">
-                                                        <h4 className={`font-black text-lg truncate ${currentBidder?.id === team.id ? 'text-green-800' : 'text-slate-800'}`}>
+                                                    <div className="min-w-0 w-full">
+                                                        <h4 className={`font-black text-sm truncate ${currentBidder?.id === team.id ? 'text-green-800' : 'text-slate-800'}`}>
                                                             {team.name}
                                                         </h4>
-                                                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-                                                            <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">{team.short_name}</span>
-                                                            <span>•</span>
+                                                        <div className="flex flex-wrap items-center gap-1 text-[10px] font-bold text-slate-500 mt-1">
+                                                            <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 shrink-0">{team.short_name}</span>
                                                             <span className="text-slate-400">₹{team.purse_remaining.toLocaleString()}</span>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
                                             {currentBidder?.id === team.id && (
-                                                <span className="bg-green-500 text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-full animate-pulse ml-2 flex-shrink-0">Lead</span>
+                                                <span className="absolute top-2 right-2 bg-green-500 text-white text-[9px] uppercase font-bold px-2 py-0.5 rounded-full animate-pulse shadow-md">
+                                                    Lead
+                                                </span>
                                             )}
                                         </div>
 
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-2 mt-auto">
                                             <button
                                                 onClick={() => setSelectedTeamViewer(team)}
-                                                className="flex-1 py-2 rounded-xl text-xs font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 transition-colors"
+                                                className="flex-1 py-1.5 rounded-lg text-[10px] font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 transition-colors uppercase tracking-wider"
                                             >
                                                 View
                                             </button>
@@ -908,7 +983,7 @@ const AuctionRoom = () => {
                                                             syncLiveBid(currentBid, team.id);
                                                         }
                                                     }}
-                                                    className={`flex-[2] py-2 rounded-xl text-xs font-black uppercase tracking-wide transition-all shadow-sm ${currentBidder?.id === team.id
+                                                    className={`flex-[2] py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all shadow-sm ${currentBidder?.id === team.id
                                                         ? 'bg-green-500 hover:bg-green-600 text-white shadow-green-200'
                                                         : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200 hover:scale-105'
                                                         }`}
