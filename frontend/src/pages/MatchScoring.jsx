@@ -3,7 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import api from '../api/axios';
 import { toast } from 'react-toastify';
-import { FiArrowLeft, FiUser, FiActivity, FiList, FiFileText, FiMonitor, FiMapPin, FiCalendar } from 'react-icons/fi';
+import { FiArrowLeft, FiUser, FiActivity, FiList, FiFileText, FiMonitor, FiMapPin, FiCalendar, FiFastForward, FiCpu } from 'react-icons/fi';
+import SimulationModal from '../components/SimulationModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationModal from '../components/ConfirmationModal';
 import PlayerInfoModal from '../components/PlayerInfoModal';
@@ -31,6 +32,9 @@ const MatchScoring = () => {
     const [infoPlayer, setInfoPlayer] = useState(null);
     const [tossModalOpen, setTossModalOpen] = useState(false);
     const [tossData, setTossData] = useState({ winnerId: '', decision: 'Bat', totalOvers: 10 });
+    const [editScoreModalOpen, setEditScoreModalOpen] = useState(false);
+    const [lastBallToEdit, setLastBallToEdit] = useState(null);
+    const [showSimModal, setShowSimModal] = useState(false);
 
     const [wicketModalOpen, setWicketModalOpen] = useState(false);
     const [wicketData, setWicketData] = useState({
@@ -435,6 +439,33 @@ const MatchScoring = () => {
             loadMatchData();
         } catch (error) {
             toast.error("Failed to start next innings");
+        }
+    };
+
+    const handleAutoSimulate = () => {
+        setShowSimModal(true);
+    };
+
+    const confirmSimulation = async () => {
+        setShowSimModal(false);
+
+        try {
+            const toastId = toast.loading("Simulating match...");
+            const res = await api.post(`/score/match/${fixtureId}/simulate`);
+
+            toast.update(toastId, { render: "Simulation Completed!", type: "success", isLoading: false, autoClose: 3000 });
+
+            // Reload all data
+            await loadMatchData();
+
+            // If match is now completed, switch to summary
+            if (res.data.ballsGenerated > 0) {
+                // Check status via re-loaded data or just force switch if status says Completed
+                // We can rely on loadMatchData setting the state
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Simulation Failed: " + (error.response?.data?.message || "Unknown Error"));
         }
     };
 
@@ -1093,7 +1124,7 @@ const MatchScoring = () => {
                                 <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2"><FiActivity /> Bowler ({bowlingTeam?.short_name})</h3>
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Current Bowler</label>
+                                        <label className="block text-sm font-bold text-gray-400 uppercase mb-1 block">Current Bowler</label>
                                         <div className="flex items-center gap-3">
                                             {bowlerId && (() => {
                                                 const p = bowlingTeam?.Players?.find(pl => pl.id == bowlerId);
@@ -1192,7 +1223,14 @@ const MatchScoring = () => {
                                     </div>
 
                                     {!isMatchCompleted && (
-                                        <div className="mt-6 border-t border-gray-100 pt-4">
+                                        <div className="mt-6 border-t border-gray-100 pt-4 grid grid-cols-2 gap-4">
+                                            <button
+                                                onClick={handleAutoSimulate}
+                                                className="w-full py-3 bg-indigo-50 text-indigo-600 font-bold rounded-lg border-2 border-indigo-100 hover:bg-indigo-100 hover:border-indigo-200 transition-colors flex items-center justify-center gap-2 group"
+                                            >
+                                                <FiCpu className="group-hover:animate-pulse" /> Auto-Simulate
+                                            </button>
+
                                             <button
                                                 onClick={() => {
                                                     if (window.confirm(`Are you sure you want to DECLARE/END the ${fixture.current_innings === 1 ? '1st' : '2nd'} innings?`)) {
@@ -1714,7 +1752,13 @@ const MatchScoring = () => {
                 isOpen={!!infoPlayer}
                 onClose={() => setInfoPlayer(null)}
             />
-        </Layout >
+            {/* Simulation Modal */}
+            <SimulationModal
+                isOpen={showSimModal}
+                onClose={() => setShowSimModal(false)}
+                onConfirm={confirmSimulation}
+            />
+        </Layout>
     );
 };
 

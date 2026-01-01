@@ -1,7 +1,9 @@
 import React, { useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 const WinProbability = ({ probability, team1, team2, allBalls, fixture }) => {
+    const location = useLocation();
 
     // --- Worm Graph Data Preparation ---
     const chartData = useMemo(() => {
@@ -133,8 +135,9 @@ const WinProbability = ({ probability, team1, team2, allBalls, fixture }) => {
 
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className={location.pathname.includes('/match-analytics') ? "w-full mb-8" : "grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"}>
             {/* 1. Win Probability */}
+
             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-white/10">
                 <h3 className="font-bold text-gray-700 dark:text-white mb-6 uppercase tracking-wide flex items-center gap-2">
                     <span>📊</span> Win Probability (WASP)
@@ -199,60 +202,64 @@ const WinProbability = ({ probability, team1, team2, allBalls, fixture }) => {
                 )}
             </div>
 
-            {/* 2. Worm Graph */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-white/10">
-                <h3 className="font-bold text-gray-700 dark:text-white mb-6 uppercase tracking-wide flex items-center gap-2">
-                    <span>📈</span> Worm Graph & Comparison
-                </h3>
 
-                <div className="h-64 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                            <XAxis
-                                dataKey="name"
-                                stroke="#94a3b8"
-                                fontSize={10}
-                                tickLine={false}
-                                axisLine={false}
-                                label={{ value: 'Overs', position: 'insideBottomRight', offset: -5, fontSize: 10, fill: '#94a3b8' }}
-                            />
-                            <YAxis
-                                stroke="#94a3b8"
-                                fontSize={10}
-                                tickLine={false} // Remove ticks
-                                axisLine={false}
-                                domain={['auto', 'auto']}
-                            />
-                            <Tooltip
-                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
-                            />
-                            <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                            <Line
-                                type="monotone"
-                                dataKey="team1"
-                                name={team1 || "Innings 1"}
-                                stroke="#2563eb"
-                                strokeWidth={3}
-                                dot={{ r: 2, strokeWidth: 0 }}
-                                activeDot={{ r: 6 }}
-                                connectNulls
-                            />
-                            <Line
-                                type="monotone"
-                                dataKey="team2"
-                                name={team2 || "Innings 2"}
-                                stroke="#f97316"
-                                strokeWidth={3}
-                                dot={{ r: 2, strokeWidth: 0 }}
-                                activeDot={{ r: 6 }}
-                                connectNulls
-                            />
-                        </LineChart>
-                    </ResponsiveContainer>
+            {/* 2. Worm Graph */}
+            {!location.pathname.includes('/match-analytics') && (
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-white/10">
+                    <h3 className="font-bold text-gray-700 dark:text-white mb-6 uppercase tracking-wide flex items-center gap-2">
+                        <span>📈</span> Worm Graph & Comparison
+                    </h3>
+
+                    <div className="h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                                <XAxis
+                                    dataKey="name"
+                                    stroke="#94a3b8"
+                                    fontSize={10}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    label={{ value: 'Overs', position: 'insideBottomRight', offset: -5, fontSize: 10, fill: '#94a3b8' }}
+                                />
+                                <YAxis
+                                    stroke="#94a3b8"
+                                    fontSize={10}
+                                    tickLine={false} // Remove ticks
+                                    axisLine={false}
+                                    domain={['auto', 'auto']}
+                                />
+                                <Tooltip
+                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                                />
+                                <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                                <Line
+                                    type="monotone"
+                                    dataKey="team1"
+                                    name={team1 || "Innings 1"}
+                                    stroke="#2563eb"
+                                    strokeWidth={3}
+                                    dot={{ r: 2, strokeWidth: 0 }}
+                                    activeDot={{ r: 6 }}
+                                    connectNulls
+                                />
+                                <Line
+                                    type="monotone"
+                                    dataKey="team2"
+                                    name={team2 || "Innings 2"}
+                                    stroke="#f97316"
+                                    strokeWidth={3}
+                                    dot={{ r: 2, strokeWidth: 0 }}
+                                    activeDot={{ r: 6 }}
+                                    connectNulls
+                                />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
-            </div>
+            )}
+
         </div>
     );
 };

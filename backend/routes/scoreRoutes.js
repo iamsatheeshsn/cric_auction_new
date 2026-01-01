@@ -14,4 +14,7 @@ router.post('/match/:fixtureId/ball', scoreController.recordBall);
 // Undo Ball
 router.delete('/match/:fixtureId/undo', scoreController.undoLastBall);
 
+// Simulate Match (Auto-Play)
+router.post('/match/:fixtureId/simulate', scoreController.simulateMatch);
+
 module.exports = router;

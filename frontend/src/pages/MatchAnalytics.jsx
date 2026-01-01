@@ -38,84 +38,102 @@ const MatchAnalytics = () => {
     // Constructing mock-ish logic based on typical scorecard structure if "balls" are available.
 
     const processWormData = () => {
-        // We need an array of { over: 1, team1Runs: 5, team2Runs: 6 }
         const balls = matchData.balls || [];
-        const innings1 = balls.filter(b => b.innings === 1);
-        const innings2 = balls.filter(b => b.innings === 2);
+        if (balls.length === 0) return [];
 
-        // Need to aggregate balls to overs.
-        // This relies on matchData structure. 
-        // If getting raw balls:
-        const maxOverIndex = Math.max(
-            innings1[innings1.length - 1]?.over_number || 0,
-            innings2[innings2.length - 1]?.over_number || 0
-        );
+        const innings1 = balls.filter(b => Number(b.innings) === 1);
+        const innings2 = balls.filter(b => Number(b.innings) === 2);
+
+        const getMaxOver = (inn) => {
+            if (inn.length === 0) return 0;
+            return Math.max(...inn.map(b => Number(b.over_number || 0)));
+        };
+
+        const maxOver1 = getMaxOver(innings1);
+        const maxOver2 = getMaxOver(innings2);
+        const maxOverIndex = Math.max(maxOver1, maxOver2);
 
         let data = [];
         let t1Sum = 0;
         let t2Sum = 0;
 
-        // Loop from Over 1 to (Max+1) (e.g., if max index is 0, we want Over 1. If 19, Over 20).
-        // Default to at least 20 overs for the X-axis scale
+        // Ensure we plot at least up to the max over played, or 20 if less
         const totalOvers = Math.max(20, maxOverIndex + 1);
 
         for (let i = 1; i <= totalOvers; i++) {
             const overIndex = i - 1;
 
             // Get runs in this over
-            const t1OverRuns = innings1.filter(b => b.over_number === overIndex).reduce((sum, b) => sum + (Number(b.runs_scored) || 0) + (Number(b.extras) || 0), 0);
-            const t2OverRuns = innings2.filter(b => b.over_number === overIndex).reduce((sum, b) => sum + (Number(b.runs_scored) || 0) + (Number(b.extras) || 0), 0);
+            const t1OverRuns = innings1
+                .filter(b => Number(b.over_number) === overIndex)
+                .reduce((sum, b) => sum + (Number(b.runs_scored) || 0) + (Number(b.extras) || 0), 0);
+
+            const t2OverRuns = innings2
+                .filter(b => Number(b.over_number) === overIndex)
+                .reduce((sum, b) => sum + (Number(b.runs_scored) || 0) + (Number(b.extras) || 0), 0);
 
             t1Sum += t1OverRuns;
             t2Sum += t2OverRuns;
 
-            // Only push if over has happened (checking if balls exist or sum > 0)
-            const t1HasData = innings1.some(b => b.over_number === overIndex);
-            const t2HasData = innings2.some(b => b.over_number === overIndex);
+            // Determine if we should plot a point for this over
+            // Plot if:
+            // 1. Data exists for this over
+            // 2. OR if it's an earlier over (fill the gap for worm graph)
+            // 3. BUT stop plotting if we exceeded the team's played overs (unless match is live and they are waiting? No, standard worm stops)
 
-            // We want to show the line up to the current point, but not flatline at the end if the match isn't there yet.
-            // But for the FIRST team, if they finished 20 overs, t1HasData will be false for over 21 etc.
-            // If match is live, we might want null for future overs.
+            const t1Played = overIndex <= maxOver1;
+            const t2Played = overIndex <= maxOver2;
 
-            data.push({
-                over: i,
-                [matchData.fixture.Team1?.short_name || 'Team 1']: t1HasData || overIndex <= maxOverIndex ? t1Sum : null,
-                [matchData.fixture.Team2?.short_name || 'Team 2']: t2HasData ? t2Sum : null
-            });
+            // Fix: If innings 2 hasn't started, maxOver2 is 0. But we don't want to plot 0,0,0,0.
+            // We check if innings2 actually has balls.
+            const t2Started = innings2.length > 0;
+
+            let point = { over: i };
+            point.team1 = t1Played ? t1Sum : null;
+            point.team2 = (t2Started && t2Played) ? t2Sum : null;
+
+            data.push(point);
         }
         return data;
     };
 
-    const wormData = processWormData();
     const t1Name = matchData.fixture.Team1?.short_name || 'Team 1';
     const t2Name = matchData.fixture.Team2?.short_name || 'Team 2';
+    const wormData = processWormData();
 
     const processRunRateData = () => {
         const balls = matchData.balls || [];
-        const innings1 = balls.filter(b => b.innings === 1);
-        const innings2 = balls.filter(b => b.innings === 2);
+        if (balls.length === 0) return [];
 
-        const maxOverIndex = Math.max(
-            innings1[innings1.length - 1]?.over_number || 0,
-            innings2[innings2.length - 1]?.over_number || 0
-        );
+        const innings1 = balls.filter(b => Number(b.innings) === 1);
+        const innings2 = balls.filter(b => Number(b.innings) === 2);
 
+        const getMaxOver = (inn) => {
+            if (inn.length === 0) return 0;
+            return Math.max(...inn.map(b => Number(b.over_number || 0)));
+        };
+
+        const maxOverIndex = Math.max(getMaxOver(innings1), getMaxOver(innings2));
         const totalOvers = Math.max(20, maxOverIndex + 1);
+
         let data = [];
 
         for (let i = 1; i <= totalOvers; i++) {
             const overIndex = i - 1;
-            const t1OverRuns = innings1.filter(b => b.over_number === overIndex).reduce((sum, b) => sum + (Number(b.runs_scored) || 0) + (Number(b.extras) || 0), 0);
-            const t2OverRuns = innings2.filter(b => b.over_number === overIndex).reduce((sum, b) => sum + (Number(b.runs_scored) || 0) + (Number(b.extras) || 0), 0);
 
-            // Only show if data exists for that over or if it's past
-            // If team 2 hasn't batted yet, show 0 or null? Bar chart with 0 is fine.
+            const t1OverRuns = innings1
+                .filter(b => Number(b.over_number) === overIndex)
+                .reduce((sum, b) => sum + (Number(b.runs_scored) || 0) + (Number(b.extras) || 0), 0);
 
-            data.push({
-                over: i,
-                [matchData.fixture.Team1?.short_name || 'Team 1']: t1OverRuns,
-                [matchData.fixture.Team2?.short_name || 'Team 2']: t2OverRuns
-            });
+            const t2OverRuns = innings2
+                .filter(b => Number(b.over_number) === overIndex)
+                .reduce((sum, b) => sum + (Number(b.runs_scored) || 0) + (Number(b.extras) || 0), 0);
+
+            let point = { over: i };
+            point.team1 = t1OverRuns;
+            point.team2 = t2OverRuns;
+
+            data.push(point);
         }
         return data;
     };
@@ -148,8 +166,8 @@ const MatchAnalytics = () => {
                                 contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
                             />
                             <Legend />
-                            <Line type="monotone" dataKey={t1Name} stroke="#2563eb" strokeWidth={3} dot={false} activeDot={{ r: 8 }} />
-                            <Line type="monotone" dataKey={t2Name} stroke="#ea580c" strokeWidth={3} dot={false} activeDot={{ r: 8 }} />
+                            <Line type="monotone" dataKey="team1" name={t1Name} stroke="#2563eb" strokeWidth={3} dot={false} activeDot={{ r: 8 }} />
+                            <Line type="monotone" dataKey="team2" name={t2Name} stroke="#ea580c" strokeWidth={3} dot={false} activeDot={{ r: 8 }} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -169,8 +187,8 @@ const MatchAnalytics = () => {
                                 cursor={{ fill: 'transparent' }}
                             />
                             <Legend />
-                            <Bar dataKey={t1Name} fill="#2563eb" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey={t2Name} fill="#ea580c" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="team1" name={t1Name} fill="#2563eb" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="team2" name={t2Name} fill="#ea580c" radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
