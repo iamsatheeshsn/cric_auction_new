@@ -13,6 +13,7 @@ router.post('/', upload.fields([
 
 // Bulk Import
 router.post('/bulk-import', upload.single('file'), playerController.createPlayersBulk);
+router.get('/sample-csv', playerController.downloadSampleCSV);
 
 // Update Player
 router.put('/:id', upload.fields([

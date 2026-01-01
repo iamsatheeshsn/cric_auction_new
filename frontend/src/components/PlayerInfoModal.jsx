@@ -26,25 +26,25 @@ const PlayerInfoModal = ({ player, isOpen, onClose }) => {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.9, y: 20 }}
                     transition={{ type: "spring", duration: 0.5 }}
-                    className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl relative"
+                    className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl relative max-h-[90vh] overflow-y-auto custom-scrollbar"
                 >
                     {/* Header Image / Pattern */}
-                    <div className="h-32 bg-gradient-to-r from-deep-blue to-blue-700 relative">
+                    <div className="h-24 bg-gradient-to-r from-deep-blue to-blue-700 relative">
                         <button
                             onClick={onClose}
                             className="absolute top-4 right-4 z-20 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full transition-colors backdrop-blur-md"
                         >
-                            <FiX size={20} />
+                            <FiX size={18} />
                         </button>
                     </div>
 
                     {/* Content Container */}
-                    <div className="px-8 pb-8 -mt-16">
+                    <div className="px-6 pb-6 -mt-12">
 
                         {/* Profile Header */}
-                        <div className="flex flex-col md:flex-row gap-6 items-start mb-8">
+                        <div className="flex flex-col md:flex-row gap-5 items-start mb-6">
                             {/* Avatar */}
-                            <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl border-4 border-white shadow-lg overflow-hidden bg-gray-100 flex-shrink-0 relative z-10">
+                            <div className="w-20 h-20 md:w-28 md:h-28 rounded-2xl border-4 border-white shadow-lg overflow-hidden bg-gray-100 flex-shrink-0 relative z-10">
                                 {player.image_path ? (
                                     <img
                                         src={`http://localhost:5000/${player.image_path.replace(/\\/g, '/')}`}
@@ -53,24 +53,24 @@ const PlayerInfoModal = ({ player, isOpen, onClose }) => {
                                     />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                        <FiUser size={48} />
+                                        <FiUser size={40} />
                                     </div>
                                 )}
                             </div>
 
                             {/* Name & Basic Info */}
-                            <div className="flex-1 w-full relative z-10 md:pt-16">
-                                <h2 className="text-3xl font-bold text-gray-800 break-words">{player.name}</h2>
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                    <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm font-semibold border border-blue-100">
+                            <div className="flex-1 w-full relative z-10 md:pt-14">
+                                <h2 className="text-2xl font-bold text-gray-800 break-words">{player.name}</h2>
+                                <div className="flex flex-wrap gap-2 mt-1.5">
+                                    <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-100">
                                         {player.role}
                                     </span>
                                     {player.Team && (
-                                        <span className="px-3 py-1 rounded-full bg-orange-50 text-orange-700 text-sm font-semibold border border-orange-100">
+                                        <span className="px-2.5 py-0.5 rounded-full bg-orange-50 text-orange-700 text-xs font-semibold border border-orange-100">
                                             {player.Team.name}
                                         </span>
                                     )}
-                                    <span className={`px-3 py-1 rounded-full text-sm font-semibold border ${player.status === 'Sold' ? 'bg-green-50 text-green-700 border-green-100' :
+                                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${player.status === 'Sold' ? 'bg-green-50 text-green-700 border-green-100' :
                                         player.status === 'Unsold' ? 'bg-red-50 text-red-700 border-red-100' :
                                             'bg-gray-50 text-gray-600 border-gray-200'
                                         }`}>
@@ -81,7 +81,7 @@ const PlayerInfoModal = ({ player, isOpen, onClose }) => {
                         </div>
 
                         {/* Grid Details */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
                             {/* Personal Details */}
                             <div className="space-y-4">

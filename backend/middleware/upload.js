@@ -13,17 +13,20 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
+    console.log("Multer File Filter:", file.originalname, file.mimetype);
     if (file.mimetype.startsWith('image/')) {
         cb(null, true);
     } else if (
         file.mimetype === 'text/csv' ||
         file.mimetype === 'application/vnd.ms-excel' ||
         file.mimetype === 'text/plain' ||
-        file.mimetype === 'application/csv'
+        file.mimetype === 'application/csv' ||
+        file.mimetype === '' // Allow empty mimetype which sometimes happens on Windows
     ) {
         cb(null, true);
     } else {
-        cb(new Error('Only images and CSV files are allowed!'), false);
+        console.error("Multer Rejected:", file.mimetype);
+        cb(new Error(`Only images and CSV files are allowed! Received: ${file.mimetype}`), false);
     }
 };
 

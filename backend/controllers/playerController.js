@@ -607,84 +607,141 @@ exports.regeneratePlayerIds = async (req, res) => {
 };
 
 // Bulk Import Players
+// Bulk Import Players
 exports.createPlayersBulk = async (req, res) => {
+    console.log("Bulk Import Request Received");
+    console.log("Body:", req.body);
+    console.log("File:", req.file);
+
     try {
         if (!req.file) {
+            console.error("No file in request");
             return res.status(400).json({ message: 'No file uploaded' });
         }
 
         const { auction_id } = req.body;
         const results = [];
-        const { AuctionPlayer, Player } = require('../models');
+        // Debug Logging Function
+        const logDebug = (msg) => {
+            const fs = require('fs');
+            const path = require('path');
+            const logPath = path.join(__dirname, '../import_debug.log');
+            const logMsg = `[${new Date().toISOString()}] ${msg}\n`;
+            console.log(msg);
+            try {
+                fs.appendFileSync(logPath, logMsg);
+            } catch (e) { console.error("Log write failed", e); }
+        };
 
-        fs.createReadStream(req.file.path)
-            .pipe(csv())
-            .on('data', (data) => results.push(data))
-            .on('end', async () => {
-                try {
-                    let importedCount = 0;
+        logDebug("--- NEW IMPORT REQUEST ---");
+        logDebug(`File: ${req.file.path} (${req.file.size} bytes)`);
 
-                    // Pre-fetch max order_id if auction_id is present
-                    let currentMaxOrder = 0;
-                    if (auction_id) {
-                        currentMaxOrder = await AuctionPlayer.max('order_id', { where: { auction_id } }) || 0;
-                    }
+        // Wrap stream processing in a Promise to handle async behavior correctly
+        const processFile = new Promise((resolve, reject) => {
+            const stream = fs.createReadStream(req.file.path)
+                .pipe(csv({
+                    mapHeaders: ({ header }) => header.trim().replace(/^\uFEFF/, ''), // Remove BOM and trim
+                    mapValues: ({ value }) => value ? value.trim() : value
+                }))
+                .on('data', (data) => results.push(data))
+                .on('error', (err) => reject(err))
+                .on('end', () => resolve(results));
+        });
 
-                    for (const row of results) {
-                        try {
-                            const {
-                                name, mobile_number, role, batting_type, bowling_type,
-                                father_name, dob, tshirt_size, trouser_size, notes,
-                                points, jersey_no
-                            } = row;
+        await processFile;
 
-                            // Create Global Player
-                            const player = await Player.create({
-                                name: name,
-                                mobile_number: mobile_number,
-                                role: role || 'All Rounder',
-                                batting_type: batting_type || 'Right Hand',
-                                bowling_type: bowling_type || 'None',
-                                father_name: father_name,
-                                dob: dob || null,
-                                tshirt_size: tshirt_size,
-                                trouser_size: trouser_size,
-                                notes: notes,
-                                preferred_jersey_no: jersey_no
-                            });
+        logDebug(`Parsed Rows: ${results.length}`);
+        let firstRowKeys = [];
+        if (results.length > 0) {
+            firstRowKeys = Object.keys(results[0]);
+            logDebug(`First Row Keys: ${JSON.stringify(firstRowKeys)}`);
+            logDebug(`First Row Data: ${JSON.stringify(results[0])}`);
+        }
 
-                            // Link to Auction
-                            if (auction_id && player) {
-                                currentMaxOrder++;
-                                await AuctionPlayer.create({
-                                    auction_id: auction_id,
-                                    player_id: player.id,
-                                    order_id: currentMaxOrder,
-                                    status: 'Available',
-                                    points: points || 0, // Base points
-                                    is_owner: 'false'
-                                });
-                            }
-                            importedCount++;
-                        } catch (err) {
-                            console.error("Error importing row:", row, err);
-                            // Continue to next row even if one fails
-                        }
-                    }
+        let importedCount = 0;
+        let currentMaxOrder = 0;
+        if (auction_id) {
+            currentMaxOrder = await AuctionPlayer.max('order_id', { where: { auction_id } }) || 0;
+        }
 
-                    // Cleanup uploaded file
-                    fs.unlinkSync(req.file.path);
-
-                    res.json({ message: `Successfully imported ${importedCount} players.` });
-
-                } catch (internalError) {
-                    console.error("Error processing CSV:", internalError);
-                    res.status(500).json({ message: 'Error processing CSV file' });
+        for (const row of results) {
+            try {
+                // Check for minimal required fields
+                if (!row.name || !row.mobile_number) {
+                    console.warn("Skipping row with missing name or mobile:", row);
+                    continue;
                 }
+
+                const {
+                    name, mobile_number, role, batting_type, bowling_type,
+                    father_name, dob, tshirt_size, trouser_size, notes,
+                    points, jersey_no
+                } = row;
+
+                // Create Global Player
+                const player = await Player.create({
+                    name: name,
+                    mobile_number: mobile_number,
+                    role: role || 'All Rounder',
+                    batting_type: batting_type || 'Right Hand',
+                    bowling_type: bowling_type || 'None',
+                    father_name: father_name,
+                    dob: dob ? new Date(dob) : null,
+                    tshirt_size: tshirt_size,
+                    trouser_size: trouser_size,
+                    notes: notes,
+                    preferred_jersey_no: jersey_no,
+                    image_path: 'uploads/default_player.png' // Default image to satisfy NOT NULL constraint
+                });
+
+                // Link to Auction
+                if (auction_id && player) {
+                    currentMaxOrder++;
+                    await AuctionPlayer.create({
+                        auction_id: auction_id,
+                        player_id: player.id,
+                        order_id: currentMaxOrder,
+                        status: 'Available',
+                        points: points || 0,
+                        is_owner: 'false'
+                    });
+                }
+                importedCount++;
+            } catch (err) {
+                console.error("Error importing row:", row, err.message);
+            }
+        }
+
+        // Cleanup uploaded file
+        if (fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+
+        if (importedCount === 0) {
+            return res.json({
+                message: `Imported 0 players. Found ${results.length} rows. Keys: ${firstRowKeys.join(', ')}`,
+                debug: { rowsFound: results.length, keys: firstRowKeys }
             });
+        }
+
+        res.json({ message: `Successfully imported ${importedCount} players.` });
 
     } catch (error) {
         console.error("Error in bulk import:", error);
-        res.status(500).json({ message: 'Error initiating bulk import' });
+        // Ensure cleanup on error
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        res.status(500).json({ message: 'Error processing bulk import', error: error.message });
     }
+};
+
+// Download Sample CSV
+exports.downloadSampleCSV = (req, res) => {
+    const csvContent = "name,mobile_number,role,batting_type,bowling_type,father_name,dob,tshirt_size,trouser_size,notes,points,jersey_no\n" +
+        "Player Name,9999999999,Batsman,Right Hand,None,Father Name,1990-01-01,M,32,Sample Note,100,18";
+
+    res.header('Content-Type', 'text/csv');
+    res.attachment('sample_players.csv');
+    return res.send(csvContent);
 };

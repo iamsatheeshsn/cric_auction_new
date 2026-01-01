@@ -1,0 +1,5 @@
+[2026-01-01T10:29:25.834Z] --- NEW IMPORT REQUEST ---
+[2026-01-01T10:29:25.836Z] File: uploads\file-1767263365828-391325877.csv (207 bytes)
+[2026-01-01T10:29:25.847Z] Parsed Rows: 1
+[2026-01-01T10:29:25.848Z] First Row Keys: ["name","mobile_number","role","batting_type","bowling_type","father_name","dob","tshirt_size","trouser_size","notes","points","jersey_no"]
+[2026-01-01T10:29:25.849Z] First Row Data: {"name":"Player Name","mobile_number":"9999999999","role":"Batsman","batting_type":"Right Hand","bowling_type":"None","father_name":"Father Name","dob":"1990-01-01","tshirt_size":"M","trouser_size":"32","notes":"Sample Note","points":"100","jersey_no":"18"}

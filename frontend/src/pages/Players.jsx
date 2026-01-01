@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Layout from '../components/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiPlus, FiUser, FiX, FiArrowLeft, FiTrash2, FiEdit, FiPrinter, FiRefreshCw } from 'react-icons/fi';
+import { FiPlus, FiUser, FiX, FiArrowLeft, FiTrash2, FiEdit, FiPrinter, FiRefreshCw, FiUpload, FiDownload } from 'react-icons/fi';
 import api from '../api/axios';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -21,6 +21,7 @@ const Players = () => {
     const [auction, setAuction] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [showRegisterModal, setShowRegisterModal] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
     const [editId, setEditId] = useState(null);
     const [selectedPlayer, setSelectedPlayer] = useState(null);
@@ -220,6 +221,39 @@ const Players = () => {
         setPlayerToDelete(null);
     };
 
+    const [importFile, setImportFile] = useState(null);
+    const [isImporting, setIsImporting] = useState(false);
+
+    const handleImportSubmit = async (e) => {
+        e.preventDefault();
+        if (!importFile) return toast.error("Please select a file");
+
+        const data = new FormData();
+        data.append('file', importFile);
+        if (auctionId) data.append('auction_id', auctionId);
+
+        console.log("Importing file:", importFile.name, importFile.type);
+        for (let pair of data.entries()) {
+            console.log(pair[0] + ', ' + pair[1]);
+        }
+
+        setIsImporting(true);
+        try {
+            const res = await api.post('/players/bulk-import', data, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            toast.success(res.data.message || 'Players imported successfully');
+            setShowImportModal(false);
+            setImportFile(null);
+            fetchPlayers();
+        } catch (error) {
+            console.error("Import failed:", error);
+            toast.error(error.response?.data?.message || 'Failed to import players');
+        } finally {
+            setIsImporting(false);
+        }
+    };
+
     return (
         <Layout>
             <div className="flex flex-col gap-4 mb-8 print:hidden">
@@ -281,6 +315,13 @@ const Players = () => {
                             title="Print All"
                         >
                             <FiPrinter size={20} />
+                        </button>
+
+                        <button
+                            onClick={() => setShowImportModal(true)}
+                            className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors shadow-sm ml-2"
+                        >
+                            <FiUpload /> Import
                         </button>
 
                         {(auction?.status === 'Upcoming' || !auctionId) && (
@@ -429,6 +470,69 @@ const Players = () => {
                     </button>
                 </div>
             )}
+
+            {/* Import Modal */}
+            <AnimatePresence>
+                {showImportModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden"
+                        >
+                            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                                <h2 className="text-lg font-bold text-gray-800">Import Players</h2>
+                                <button onClick={() => setShowImportModal(false)} className="text-gray-400 hover:text-red-500 transition-colors">
+                                    <FiX className="text-xl" />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleImportSubmit} className="p-6 space-y-4">
+                                <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg">
+                                    <p className="text-sm text-blue-800 mb-2">1. Download the sample CSV format</p>
+                                    <a
+                                        href="http://localhost:5000/api/players/sample-csv"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 text-xs font-bold text-deep-blue hover:underline"
+                                    >
+                                        <FiDownload /> Download Sample CSV
+                                    </a>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Upload CSV File</label>
+                                    <input
+                                        type="file"
+                                        accept=".csv"
+                                        onChange={(e) => setImportFile(e.target.files[0])}
+                                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                    />
+                                </div>
+
+                                <div className="pt-2 flex justify-end gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowImportModal(false)}
+                                        className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors text-sm"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={!importFile || isImporting}
+                                        className="px-4 py-2 bg-deep-blue text-white rounded-lg hover:bg-blue-900 transition-colors shadow-sm text-sm disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        {isImporting ? <FiRefreshCw className="animate-spin" /> : <FiUpload />}
+                                        {isImporting ? 'Importing...' : 'Upload & Import'}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* Add Player Modal */}
             <AnimatePresence>
