@@ -1,4 +1,4 @@
-const { Auction, Team, Player, AuctionPlayer } = require('../models');
+const { Auction, Team, Player, AuctionPlayer, Bid } = require('../models');
 const { Op } = require('sequelize');
 
 // Create Auction
@@ -339,10 +339,37 @@ exports.updateLiveBid = async (req, res) => {
         const { id } = req.params;
         const { amount, bidderId } = req.body;
 
+        const auction = await Auction.findByPk(id);
+        if (!auction) return res.status(404).json({ message: 'Auction not found' });
+
         await Auction.update({
             current_bid_amount: amount,
             current_bidder_id: bidderId
         }, { where: { id } });
+
+        // Log Bid History
+        if (auction.current_player_id && bidderId) {
+            // We need to fetch current player from auction or request?
+            // Auction model has current_player_id.
+            // If this is a valid bid on a player.
+            await Bid.create({
+                auction_id: id,
+                player_id: auction.current_player_id,
+                team_id: bidderId,
+                amount: amount
+            });
+        }
+
+        // Emit Socket Event
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('bid_updated', {
+                auctionId: id,
+                amount: amount,
+                bidderId: bidderId,
+                timestamp: new Date()
+            });
+        }
 
         res.json({ message: 'Live bid updated' });
     } catch (error) {

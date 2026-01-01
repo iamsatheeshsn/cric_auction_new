@@ -7,6 +7,8 @@ const Fixture = require('./Fixture')(sequelize);
 const ScoreBall = require('./ScoreBall')(sequelize);
 const PointsTable = require('./PointsTable')(sequelize);
 const Trade = require('./Trade')(sequelize);
+const Bid = require('./Bid')(sequelize);
+const TeamShortlist = require('./TeamShortlist')(sequelize);
 
 // Associations
 
@@ -26,18 +28,7 @@ PointsTable.belongsTo(Auction, { foreignKey: 'auction_id' });
 
 // ... (rest of associations) ...
 
-module.exports = {
-    sequelize,
-    User,
-    Auction,
-    Team,
-    Player,
-    Fixture,
-    AuctionPlayer,
-    ScoreBall,
-    PointsTable,
-    Trade
-};
+
 
 Team.hasOne(PointsTable, { foreignKey: 'team_id', onDelete: 'CASCADE' });
 PointsTable.belongsTo(Team, { foreignKey: 'team_id' });
@@ -86,6 +77,21 @@ ScoreBall.belongsTo(Player, { as: 'NonStriker', foreignKey: 'non_striker_id' });
 ScoreBall.belongsTo(Player, { as: 'Bowler', foreignKey: 'bowler_id' });
 ScoreBall.belongsTo(Player, { as: 'Fielder', foreignKey: 'fielder_id' });
 
+// Bid Associations (Audit Log)
+Bid.belongsTo(Auction, { foreignKey: 'auction_id' });
+Bid.belongsTo(Player, { foreignKey: 'player_id' });
+Bid.belongsTo(Team, { foreignKey: 'team_id' });
+
+Auction.hasMany(Bid, { foreignKey: 'auction_id', onDelete: 'CASCADE' });
+Player.hasMany(Bid, { foreignKey: 'player_id', onDelete: 'CASCADE' });
+Team.hasMany(Bid, { foreignKey: 'team_id', onDelete: 'CASCADE' });
+
+// Shortlist Associations
+TeamShortlist.belongsTo(Team, { foreignKey: 'team_id' });
+TeamShortlist.belongsTo(Player, { foreignKey: 'player_id' });
+Team.hasMany(TeamShortlist, { foreignKey: 'team_id', onDelete: 'CASCADE' });
+
+
 module.exports = {
     sequelize,
     User,
@@ -96,5 +102,7 @@ module.exports = {
     AuctionPlayer,
     ScoreBall,
     PointsTable,
-    Trade
+    Trade,
+    Bid,
+    TeamShortlist
 };

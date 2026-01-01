@@ -15,8 +15,15 @@ const storage = multer.diskStorage({
 const fileFilter = (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
         cb(null, true);
+    } else if (
+        file.mimetype === 'text/csv' ||
+        file.mimetype === 'application/vnd.ms-excel' ||
+        file.mimetype === 'text/plain' ||
+        file.mimetype === 'application/csv'
+    ) {
+        cb(null, true);
     } else {
-        cb(new Error('Only images are allowed!'), false);
+        cb(new Error('Only images and CSV files are allowed!'), false);
     }
 };
 

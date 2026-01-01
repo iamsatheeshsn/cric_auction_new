@@ -1,5 +1,7 @@
 const { Player, Team, ScoreBall, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const fs = require('fs');
+const csv = require('csv-parser');
 
 // Add Player (Global + Assign to Auction)
 exports.createPlayer = async (req, res) => {
@@ -552,18 +554,32 @@ exports.deletePlayer = async (req, res) => {
 exports.revisitPlayer = async (req, res) => {
     try {
         const { id } = req.params;
-        const player = await Player.findByPk(id);
+        const { auction_id } = req.body;
+        const { AuctionPlayer } = require('../models');
 
-        if (!player) return res.status(404).json({ message: 'Player not found' });
-
-        if (player.status !== 'Unsold') {
-            return res.status(400).json({ message: 'Player is not in Unsold status' });
+        if (!auction_id) {
+            return res.status(400).json({ message: 'Auction ID is required' });
         }
 
-        player.status = 'Available'; // Reset to Available/Upcoming
-        await player.save();
+        const auctionPlayer = await AuctionPlayer.findOne({
+            where: { player_id: id, auction_id }
+        });
 
-        res.json({ message: 'Player returned to auction pool', player });
+        if (!auctionPlayer) {
+            console.log(`Revisit: AuctionPlayer not found for pID=${id} aID=${auction_id}`);
+            return res.status(404).json({ message: 'Player not found in this auction' });
+        }
+
+        console.log(`Revisit: Found AP status: '${auctionPlayer.status}'`);
+
+        if (auctionPlayer.status !== 'Unsold') {
+            return res.status(400).json({ message: `Player is not in Unsold status (Current: ${auctionPlayer.status})` });
+        }
+
+        auctionPlayer.status = 'Available'; // Reset to Available/Upcoming
+        await auctionPlayer.save();
+
+        res.json({ message: 'Player returned to auction pool', player: auctionPlayer });
     } catch (error) {
         console.error("Error revisiting player:", error);
         res.status(500).json({ message: 'Error updating player status' });
@@ -587,5 +603,88 @@ exports.regeneratePlayerIds = async (req, res) => {
     } catch (error) {
         console.error("Error regenerating PIDs:", error);
         res.status(500).json({ message: 'Error regenerating PIDs' });
+    }
+};
+
+// Bulk Import Players
+exports.createPlayersBulk = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+
+        const { auction_id } = req.body;
+        const results = [];
+        const { AuctionPlayer, Player } = require('../models');
+
+        fs.createReadStream(req.file.path)
+            .pipe(csv())
+            .on('data', (data) => results.push(data))
+            .on('end', async () => {
+                try {
+                    let importedCount = 0;
+
+                    // Pre-fetch max order_id if auction_id is present
+                    let currentMaxOrder = 0;
+                    if (auction_id) {
+                        currentMaxOrder = await AuctionPlayer.max('order_id', { where: { auction_id } }) || 0;
+                    }
+
+                    for (const row of results) {
+                        try {
+                            const {
+                                name, mobile_number, role, batting_type, bowling_type,
+                                father_name, dob, tshirt_size, trouser_size, notes,
+                                points, jersey_no
+                            } = row;
+
+                            // Create Global Player
+                            const player = await Player.create({
+                                name: name,
+                                mobile_number: mobile_number,
+                                role: role || 'All Rounder',
+                                batting_type: batting_type || 'Right Hand',
+                                bowling_type: bowling_type || 'None',
+                                father_name: father_name,
+                                dob: dob || null,
+                                tshirt_size: tshirt_size,
+                                trouser_size: trouser_size,
+                                notes: notes,
+                                preferred_jersey_no: jersey_no
+                            });
+
+                            // Link to Auction
+                            if (auction_id && player) {
+                                currentMaxOrder++;
+                                await AuctionPlayer.create({
+                                    auction_id: auction_id,
+                                    player_id: player.id,
+                                    order_id: currentMaxOrder,
+                                    status: 'Available',
+                                    points: points || 0, // Base points
+                                    is_owner: 'false'
+                                });
+                            }
+                            importedCount++;
+                        } catch (err) {
+                            console.error("Error importing row:", row, err);
+                            // Continue to next row even if one fails
+                        }
+                    }
+
+                    // Cleanup uploaded file
+                    fs.unlinkSync(req.file.path);
+
+                    res.json({ message: `Successfully imported ${importedCount} players.` });
+
+                } catch (internalError) {
+                    console.error("Error processing CSV:", internalError);
+                    res.status(500).json({ message: 'Error processing CSV file' });
+                }
+            });
+
+    } catch (error) {
+        console.error("Error in bulk import:", error);
+        res.status(500).json({ message: 'Error initiating bulk import' });
     }
 };

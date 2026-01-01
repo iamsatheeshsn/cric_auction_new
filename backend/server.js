@@ -42,6 +42,7 @@ app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/points', require('./routes/pointsRoutes'));
 app.use('/api/tournament', require('./routes/tournamentRoutes'));
 app.use('/api/trades', require('./routes/tradeRoutes'));
+app.use('/api/shortlist', require('./routes/shortlistRoutes'));
 
 app.get('/', (req, res) => {
     res.send('Cricket Auction API is running...');
@@ -52,9 +53,31 @@ app.get('/api/test', (req, res) => {
 });
 
 // Standard Start
+const http = require('http');
+const { Server } = require('socket.io');
+
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "*", // Allow all for now, tighten for prod
+        methods: ["GET", "POST", "PUT", "DELETE"]
+    }
+});
+
+// Make io accessible to our router
+app.set('io', io);
+
+io.on('connection', (socket) => {
+    console.log('New client connected:', socket.id);
+
+    socket.on('disconnect', () => {
+        console.log('Client disconnected:', socket.id);
+    });
+});
+
 sequelize.sync({ alter: true }).then(() => {
     console.log('Database connected & Models synced!');
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
         const listEndpoints = require('express-list-endpoints');
         console.log("--- Registered Routes ---");

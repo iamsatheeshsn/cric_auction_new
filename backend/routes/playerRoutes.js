@@ -11,6 +11,9 @@ router.post('/', upload.fields([
     { name: 'payment_screenshot', maxCount: 1 }
 ]), playerController.createPlayer);
 
+// Bulk Import
+router.post('/bulk-import', upload.single('file'), playerController.createPlayersBulk);
+
 // Update Player
 router.put('/:id', upload.fields([
     { name: 'image', maxCount: 1 },

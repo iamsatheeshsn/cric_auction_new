@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSocket } from '../context/SocketContext';
 import Layout from '../components/Layout';
 import Sidebar from '../components/Sidebar';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiCheckCircle, FiUser, FiArrowRight, FiSkipForward, FiMonitor, FiActivity, FiDollarSign, FiUsers, FiCpu, FiInfo } from 'react-icons/fi';
+import { FiCheckCircle, FiUser, FiArrowRight, FiSkipForward, FiMonitor, FiActivity, FiDollarSign, FiUsers, FiCpu, FiInfo, FiExternalLink } from 'react-icons/fi';
 import api from '../api/axios';
 import { getAuctionAdvice } from '../utils/AIModel';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -33,38 +34,148 @@ const SoldCelebration = () => (
     </motion.div>
 );
 
+const FireAnimation = () => (
+    <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1.1 }}
+        exit={{ opacity: 0, scale: 1.5 }}
+        className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center bg-black/20 backdrop-blur-[2px]"
+    >
+        <div className="text-center relative">
+            <h1 className="text-8xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 via-orange-500 to-red-600 animate-pulse drop-shadow-2xl tracking-tighter">
+                🔥 BIDDING WAR 🔥
+            </h1>
+            <p className="text-white font-bold text-2xl mt-4 text-shadow uppercase tracking-widest animate-bounce">Rapid Fire Bidding Detected!</p>
+        </div>
+    </motion.div>
+);
+
 const AuctionRoom = () => {
     const { auctionId } = useParams();
     const navigate = useNavigate();
+    const { socket } = useSocket();
 
     const [auction, setAuction] = useState(null);
-    const [players, setPlayers] = useState([]); // All players
+    const [players, setPlayers] = useState([]);
     const [teams, setTeams] = useState([]);
-
-    const [soldPlayers, setSoldPlayers] = useState([]);
-    const [unsoldPassedPlayers, setUnsoldPassedPlayers] = useState([]); // passed/unsold
-    const [viewMode, setViewMode] = useState(null); // 'available', 'sold', 'unsold'
-
-    const [unsoldPlayers, setUnsoldPlayers] = useState([]);
     const [currentPlayer, setCurrentPlayer] = useState(null);
     const [currentBid, setCurrentBid] = useState(0);
-
     const [currentBidder, setCurrentBidder] = useState(null);
-    const [searchTerm, setSearchTerm] = useState('');
 
-    // UI States
-    const [isSoldAnimation, setIsSoldAnimation] = useState(false);
+    // Filtered lists
+    const [unsoldPlayers, setUnsoldPlayers] = useState([]);
+    const [soldPlayers, setSoldPlayers] = useState([]);
+    const [unsoldPassedPlayers, setUnsoldPassedPlayers] = useState([]);
+
+    const [searchTerm, setSearchTerm] = useState('');
+    const [processing, setProcessing] = useState(false);
     const [statusModal, setStatusModal] = useState({ isOpen: false, status: null });
+
+    const [viewMode, setViewMode] = useState(null); // 'sold', 'unsold', or null
     const [infoPlayer, setInfoPlayer] = useState(null);
+    const [isSoldAnimation, setIsSoldAnimation] = useState(false);
+    const [isBiddingWar, setIsBiddingWar] = useState(false);
+
+    // Unsold Modal State
     const [unsoldPoolOpen, setUnsoldPoolOpen] = useState(false);
     const [revisitLoading, setRevisitLoading] = useState(null);
     const [selectedTeamViewer, setSelectedTeamViewer] = useState(null);
 
     const processingRef = useRef(false);
 
+    // Timer Audio Refs
+    const timerAudioRef = useRef(new Audio('/assets/sounds/timer.mp3'));
+
+    useEffect(() => {
+        // Configure continuous loop
+        timerAudioRef.current.loop = true;
+        timerAudioRef.current.volume = 0.3; // Background usage
+
+        return () => {
+            if (timerAudioRef.current) timerAudioRef.current.pause();
+        };
+    }, []);
+
+    // Manage Background Sound
+    const [isMuted, setIsMuted] = useState(false);
+
+    useEffect(() => {
+        const shouldPlay = !isMuted && auction && auction.status === 'Live' && currentPlayer && !isSoldAnimation;
+        if (shouldPlay) {
+            timerAudioRef.current.play().catch(e => console.warn("Autoplay prevented", e));
+        } else {
+            timerAudioRef.current.pause();
+        }
+    }, [auction, currentPlayer, isSoldAnimation, isMuted]);
+
+    // Audio Helper
+    const playSound = (type) => {
+        if (isMuted) return;
+        try {
+            const sounds = {
+                bid: '/assets/sounds/hammer.mp3',
+                sold: '/assets/sounds/sold.mp3',
+                unsold: '/assets/sounds/unsold.mp3'
+            };
+            const audio = new Audio(sounds[type]);
+            // Low volume for bid, louder for events
+            audio.volume = type === 'bid' ? 0.6 : 1.0;
+            audio.play().catch(e => console.warn("Audio play failed", e));
+        } catch (e) {
+            console.error(e);
+        }
+    };
+    // Bidding War Logic: Track bid times
+    const lastBidsRef = useRef([]);
+
     useEffect(() => {
         loadData();
     }, [auctionId]);
+
+    // Socket Listeners
+    useEffect(() => {
+        if (!socket) return;
+
+        socket.on('bid_updated', (data) => {
+            if (data.auctionId == auctionId) {
+                // Determine if this is a new higher bid or a sync/undo
+                // We only add to history if the new amount is STRICTLY GREATER than the last recorded bid
+                setBidHistory(prev => {
+                    const lastBid = prev.length > 0 ? prev[prev.length - 1].bid : 0;
+                    if (data.amount > lastBid) {
+                        // Find team
+                        const bidder = teams.find(t => t.id == data.bidderId);
+                        return [...prev, { bid: data.amount, bidder: bidder || null }];
+                    }
+                    return prev;
+                });
+
+                setCurrentBid(data.amount);
+                const bidder = teams.find(t => t.id == data.bidderId);
+                if (bidder) setCurrentBidder(bidder);
+
+                // Sound Effect (Only for legitimate new bids or increases)
+                if (data.amount > currentBid) {
+                    new Audio('/assets/sounds/hammer.mp3').play().catch(() => { });
+
+                    // Bidding War Detection
+                    const now = Date.now();
+                    lastBidsRef.current.push(now);
+                    lastBidsRef.current = lastBidsRef.current.filter(t => now - t < 5000);
+
+                    if (lastBidsRef.current.length >= 3) {
+                        setIsBiddingWar(true);
+                        if (window.warTimeout) clearTimeout(window.warTimeout);
+                        window.warTimeout = setTimeout(() => setIsBiddingWar(false), 3000);
+                    }
+                }
+            }
+        });
+
+        return () => {
+            socket.off('bid_updated');
+        };
+    }, [socket, teams, auctionId, currentBid]); // Added currentBid dep for sound check
 
     const loadData = async () => {
         try {
@@ -76,6 +187,15 @@ const AuctionRoom = () => {
 
             const auctionData = aucRes.data;
             setAuction(auctionData);
+
+            // Fetch live sync state
+            if (auctionData.current_player_id) {
+                // Assume this endpoint exists or logic handles it
+            }
+            if (auctionData.current_bid_amount) setCurrentBid(auctionData.current_bid_amount);
+            if (auctionData.current_bidder_id) {
+                // Set initial bidder will be resolved when teams set
+            }
 
             // Auto-Start Auction logic
             if (auctionData.status === 'Upcoming' && !processingRef.current) {
@@ -94,6 +214,12 @@ const AuctionRoom = () => {
 
             setPlayers(allPlayers);
             setTeams(allTeams);
+
+            // Sync Current Bidder if IDs loaded
+            if (auctionData.current_bidder_id) {
+                const b = allTeams.find(t => t.id == auctionData.current_bidder_id);
+                if (b) setCurrentBidder(b);
+            }
 
             setUnsoldPlayers(allPlayers.filter(p => p.status === 'Available').sort((a, b) => a.id - b.id));
             setSoldPlayers(allPlayers.filter(p => p.status === 'Sold').sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)));
@@ -138,17 +264,27 @@ const AuctionRoom = () => {
 
     const [bidHistory, setBidHistory] = useState([]);
 
+    // Removed manual addToHistory as socket handles it now
     const addToHistory = () => {
-        setBidHistory(prev => [...prev, { bid: currentBid, bidder: currentBidder }]);
+        // Keeps local optimistic updates if needed, but risky with socket race
+        // setBidHistory(prev => [...prev, { bid: currentBid, bidder: currentBidder }]);
     };
 
     const handleUndo = () => {
         if (bidHistory.length === 0) return;
-        const lastState = bidHistory[bidHistory.length - 1];
-        setCurrentBid(lastState.bid);
-        setCurrentBidder(lastState.bidder);
-        setBidHistory(prev => prev.slice(0, -1));
-        syncLiveBid(lastState.bid, lastState.bidder?.id);
+
+        // Remove the last bid from local history immediately
+        // The previous state is actually the 2nd to last item, or base price if history has only 1 item
+        const newHistory = bidHistory.slice(0, -1);
+        setBidHistory(newHistory);
+
+        const previousState = newHistory.length > 0 ? newHistory[newHistory.length - 1] : { bid: auction?.min_bid || 0, bidder: null };
+
+        setCurrentBid(previousState.bid);
+        setCurrentBidder(previousState.bidder);
+
+        // Sync with server (Server will emit bid_updated, but our socket listener won't add it to history because amount is < old tip)
+        syncLiveBid(previousState.bid, previousState.bidder?.id);
     };
 
     const startPlayerAuction = async (player) => {
@@ -172,9 +308,16 @@ const AuctionRoom = () => {
     };
 
     const handleBidIncrease = async (amount) => {
-        addToHistory();
+        // Optimistic update: We DON'T add to history here, we wait for socket
+        // But we DO update current state for responsiveness
         const newBid = (parseInt(currentBid) || 0) + parseInt(amount);
+        // setCurrentBid(newBid); // Optional: wait for socket for SOT, but UI lag might be annoying.
+        // Better: Update UI optimistcally, but let History depend on Socket.
+
+        // Actually, for instant feedback, let's just send request.
+        // Wait, if we don't update currentBid, user can't click again fast.
         setCurrentBid(newBid);
+
         await syncLiveBid(newBid, currentBidder?.id);
     };
 
@@ -187,6 +330,7 @@ const AuctionRoom = () => {
         if (!currentPlayer) return;
         try {
             setIsSoldAnimation(true);
+            playSound('sold');
             setTimeout(async () => {
                 await api.post(`/players/${currentPlayer.id}/sold`, {
                     team_id: teamId,
@@ -205,7 +349,8 @@ const AuctionRoom = () => {
     const handleUnsold = async () => {
         if (!currentPlayer) return;
         try {
-            await api.put(`/players/${currentPlayer.id}/unsold`, { auction_id: auctionId });
+            playSound('unsold');
+            await api.post(`/players/${currentPlayer.id}/unsold`, { auction_id: parseInt(auctionId) });
             setLastAction({ type: 'UNSOLD', player: currentPlayer });
 
             // Update lists
@@ -216,15 +361,16 @@ const AuctionRoom = () => {
             setSearchTerm('');
             toast.info("Player Unsold");
         } catch (error) {
-            console.error(error);
-            toast.error("Failed to mark unsold");
+            console.error("Unsold Error:", error);
+            const msg = error.response?.data?.message || "Failed to mark unsold";
+            toast.error(msg);
         }
     };
 
     const handleRevisit = async (playerId) => {
         setRevisitLoading(playerId);
         try {
-            await api.put(`/players/${playerId}/revisit`);
+            await api.put(`/players/${playerId}/revisit`, { auction_id: auctionId });
             toast.success("Player returned to Upcoming pool!");
             loadData();
             setUnsoldPoolOpen(false);
@@ -394,68 +540,92 @@ const AuctionRoom = () => {
                     {viewMode === 'sold' && <PlayerListModal title="Sold Players" players={soldPlayers} onClose={() => setViewMode(null)} colorClass="bg-green-600" />}
                     {viewMode === 'unsold' && <PlayerListModal title="Unsold Players" players={unsoldPassedPlayers} onClose={() => setViewMode(null)} colorClass="bg-red-500" />}
                     {isSoldAnimation && <SoldCelebration />}
+                    {isBiddingWar && <FireAnimation />}
                 </AnimatePresence>
 
                 {/* Top Stats Bar */}
-                <div className="bg-white/80 backdrop-blur-md border-b border-gray-200 p-4 sticky top-0 z-30 flex justify-between items-center shadow-sm">
-                    <div className="flex items-center gap-4">
-                        <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white w-12 h-12 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
-                            <FiActivity size={24} />
+                <div className="bg-white/80 backdrop-blur-md border-b border-gray-200 p-3 sticky top-0 z-30 flex justify-between items-center shadow-sm gap-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200 shrink-0">
+                            <FiActivity size={20} />
                         </div>
-                        <div>
-                            <h2 className="text-xl font-black text-slate-800 tracking-tight leading-none mb-1">Auction Arena</h2>
-                            <p className="text-sm font-medium text-slate-500">{auction?.name}</p>
+                        <div className="min-w-0 hidden sm:block">
+                            <h2 className="text-lg font-black text-slate-800 tracking-tight leading-none mb-0.5 truncate">Auction Arena</h2>
+                            <p className="text-xs font-medium text-slate-500 truncate">{auction?.name}</p>
                         </div>
+                        <button
+                            onClick={() => setIsMuted(prev => !prev)}
+                            className={`sm:hidden p-2 rounded-lg ${isMuted ? 'bg-red-100 text-red-500' : 'bg-green-100 text-green-500'}`}
+                        >
+                            {isMuted ? '🔇' : '🔊'}
+                        </button>
                     </div>
 
-                    <div className="flex items-center gap-2 bg-gray-100/50 p-1.5 rounded-2xl border border-gray-200">
+                    <div className="flex items-center gap-1 bg-gray-100/50 p-1 rounded-xl border border-gray-200 shrink-0">
                         {[
-                            { id: 'available', label: 'Available', count: unsoldPlayers.length, color: 'blue' },
+                            { id: 'available', label: 'Avail', count: unsoldPlayers.length, color: 'blue' },
                             { id: 'sold', label: 'Sold', count: soldPlayers.length, color: 'green' },
-                            { id: 'unsold', label: 'UNSOLD', count: unsoldPassedPlayers.length, color: 'red' }
+                            { id: 'unsold', label: 'Skip', count: unsoldPassedPlayers.length, color: 'red' }
                         ].map(stat => (
                             <button
                                 key={stat.id}
                                 onClick={() => setViewMode(stat.id)}
-                                className={`flex items-center gap-3 px-4 py-2 rounded-xl transition-all ${stat.color === 'blue' ? 'hover:bg-blue-50 text-blue-600' :
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${stat.color === 'blue' ? 'hover:bg-blue-50 text-blue-600' :
                                     stat.color === 'green' ? 'hover:bg-green-50 text-green-600' :
                                         'hover:bg-red-50 text-red-500'
                                     }`}
                             >
-                                <span className="text-xs font-bold uppercase tracking-wider opacity-70">{stat.label}</span>
-                                <span className="text-xl font-black">{stat.count}</span>
+                                <span className="hidden md:inline text-[10px] font-bold uppercase tracking-wider opacity-70">{stat.label}</span>
+                                <span className="text-sm font-black">{stat.count}</span>
                             </button>
                         ))}
+                        <button
+                            onClick={() => setIsMuted(prev => !prev)}
+                            className={`hidden sm:flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${isMuted ? 'bg-red-100 text-red-500 hover:bg-red-200' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}
+                            title={isMuted ? "Unmute Sound" : "Mute Sound"}
+                        >
+                            {isMuted ? '🔇' : '🔊'}
+                        </button>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 shrink-0">
+                        <a
+                            href={`/strategy?auctionId=${auctionId}`}
+                            target="_blank"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-xl font-bold flex items-center gap-2 transition-all shadow-indigo-200 shadow-md hover:scale-105"
+                            title="Strategy Board"
+                        >
+                            <FiExternalLink /> <span className="hidden xl:inline">Strategy</span>
+                        </a>
                         <button
                             onClick={() => window.open(`/spectator/${auctionId}`, '_blank')}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all flex items-center gap-2 active:scale-95"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-xl font-bold shadow-md shadow-indigo-200 transition-all flex items-center gap-2 active:scale-95"
+                            title="Projector View"
                         >
-                            <FiMonitor /> <span className="hidden sm:inline">Projector</span>
+                            <FiMonitor /> <span className="hidden 2xl:inline">Projector</span>
                         </button>
                         <button
                             onClick={() => setUnsoldPoolOpen(true)}
-                            className="bg-white hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-xl font-bold border border-gray-200 shadow-sm transition-all flex items-center gap-2 active:scale-95"
+                            className="bg-white hover:bg-gray-50 text-gray-700 px-3 py-2 rounded-xl font-bold border border-gray-200 shadow-sm transition-all flex items-center gap-2 active:scale-95"
+                            title="Unsold Pool"
                         >
-                            <FiSkipForward /> <span className="hidden sm:inline">Pool</span>
+                            <FiSkipForward /> <span className="hidden 2xl:inline">Pool</span>
                         </button>
 
-                        <div className="h-8 w-px bg-gray-200 mx-2"></div>
+                        <div className="h-6 w-px bg-gray-200 mx-1"></div>
 
-                        <div className="flex gap-2">
+                        <div className="flex gap-1">
                             {auction?.status === 'Paused' ? (
-                                <button onClick={() => handleStatusChange('Live')} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-4 py-2 rounded-xl font-bold text-sm transition-colors">
-                                    ▶ Resume
+                                <button onClick={() => handleStatusChange('Live')} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 p-2 rounded-xl font-bold text-sm transition-colors" title="Resume">
+                                    <span className="hidden md:inline">Resume</span> <span className="md:hidden">▶</span>
                                 </button>
                             ) : (
-                                <button onClick={() => handleStatusChange('Paused')} className="bg-amber-100 hover:bg-amber-200 text-amber-700 px-4 py-2 rounded-xl font-bold text-sm transition-colors">
-                                    ⏸ Pause
+                                <button onClick={() => handleStatusChange('Paused')} className="bg-amber-100 hover:bg-amber-200 text-amber-700 p-2 rounded-xl font-bold text-sm transition-colors" title="Pause">
+                                    <span className="hidden md:inline">Pause</span> <span className="md:hidden">⏸</span>
                                 </button>
                             )}
-                            <button onClick={() => handleStatusChange('Completed')} className="bg-rose-100 hover:bg-rose-200 text-rose-700 px-4 py-2 rounded-xl font-bold text-sm transition-colors">
-                                ⏹ End
+                            <button onClick={() => handleStatusChange('Completed')} className="bg-rose-100 hover:bg-rose-200 text-rose-700 p-2 rounded-xl font-bold text-sm transition-colors" title="End Auction">
+                                <span className="hidden md:inline">End</span> <span className="md:hidden">⏹</span>
                             </button>
                         </div>
                     </div>
@@ -568,8 +738,12 @@ const AuctionRoom = () => {
                             ) : (
                                 /* Search State */
                                 <div className="h-full flex flex-col items-center justify-center max-w-2xl mx-auto text-center">
-                                    <div className="bg-blue-50 p-6 rounded-full mb-8 shadow-inner">
+                                    <div className="bg-blue-50 p-6 rounded-full mb-8 shadow-inner relative group cursor-pointer hover:bg-blue-100 transition-colors"
+                                        onClick={() => window.open(`/strategy?auctionId=${auctionId}`, '_blank')}>
                                         <FiUser size={48} className="text-blue-500" />
+                                        <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-bounce">
+                                            WAR ROOM
+                                        </div>
                                     </div>
                                     <h2 className="text-4xl font-black text-slate-800 mb-3 tracking-tight">Select Next Player</h2>
                                     <p className="text-slate-400 text-lg mb-10">Search by ID or Name to begin the bidding process</p>
@@ -794,6 +968,64 @@ const AuctionRoom = () => {
                                 )}
                             </div>
                         </motion.div>
+                    </div>
+                )}
+
+                {selectedTeamViewer && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                        <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden">
+                            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-16 h-16 bg-white rounded-full shadow-sm p-2 border border-blue-100">
+                                        {selectedTeamViewer.image_path && <img src={getImageUrl(selectedTeamViewer.image_path)} className="w-full h-full object-contain" />}
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-black text-slate-800">{selectedTeamViewer.name}</h2>
+                                        <p className="text-slate-500 font-bold">{selectedTeamViewer.short_name}</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setSelectedTeamViewer(null)} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+
+                            <div className="p-6 overflow-y-auto bg-slate-50 space-y-6 custom-scrollbar">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                                        <p className="text-xs font-bold uppercase text-green-600 mb-1">Purse Remaining</p>
+                                        <p className="text-2xl font-black text-slate-800">₹{selectedTeamViewer.purse_remaining.toLocaleString()}</p>
+                                    </div>
+                                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                        <p className="text-xs font-bold uppercase text-blue-600 mb-1">Squad Size</p>
+                                        <p className="text-2xl font-black text-slate-800">{soldPlayers.filter(p => p.team_id === selectedTeamViewer.id || (p.Team?.id === selectedTeamViewer.id)).length} / {selectedTeamViewer.players_per_team}</p>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="font-bold text-slate-700 mb-3 flex items-center gap-2">
+                                        <FiUsers className="text-blue-500" /> Squad List
+                                    </h3>
+                                    <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                                        {soldPlayers.filter(p => p.team_id === selectedTeamViewer.id || (p.Team?.id === selectedTeamViewer.id)).length === 0 ? (
+                                            <div className="p-8 text-center text-gray-400 font-bold">No players bought yet</div>
+                                        ) : (
+                                            soldPlayers.filter(p => p.team_id === selectedTeamViewer.id || (p.Team?.id === selectedTeamViewer.id)).map(p => (
+                                                <div key={p.id} className="p-3 border-b border-gray-50 last:border-0 flex items-center gap-3 hover:bg-slate-50 transition-colors">
+                                                    <div className="w-10 h-10 rounded-lg bg-gray-100 overflow-hidden shrink-0">
+                                                        {p.image_path ? <img src={getImageUrl(p.image_path)} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><FiUser className="text-gray-300" /></div>}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="font-bold text-slate-700 truncate">{p.name}</div>
+                                                        <div className="text-xs text-slate-400">{p.role}</div>
+                                                    </div>
+                                                    <div className="font-bold text-green-600">₹{p.sold_price?.toLocaleString()}</div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
 
