@@ -27,11 +27,11 @@ const ManOfTheMatchCard = ({ data }) => {
 
             {/* Header */}
             <div className="relative z-10 px-12 pt-12 flex justify-between items-start">
-                <div>
-                    <h3 className="text-3xl font-bold text-yellow-500 uppercase tracking-widest mb-2">{matchTitle}</h3>
+                <div className="max-w-xl">
+                    <h3 className="text-3xl font-bold text-yellow-500 uppercase tracking-widest mb-2 leading-tight">{matchTitle}</h3>
                     <p className="text-xl text-gray-400">{date}</p>
                 </div>
-                <div className="bg-white/10 backdrop-blur-md px-6 py-3 rounded-full border border-white/20">
+                <div className="bg-white/10 backdrop-blur-md px-6 py-3 rounded-full border border-white/20 shrink-0 ml-4">
                     <span className="text-2xl font-black uppercase tracking-wider">Man of the Match</span>
                 </div>
             </div>
@@ -48,42 +48,46 @@ const ManOfTheMatchCard = ({ data }) => {
                     }}
                 />
 
-                {/* Name Overlay behind image or in front? Let's put in front bottom */}
-                <div className="absolute bottom-40 text-center w-full z-30">
-                    <h1 className="text-8xl font-black uppercase italic tracking-tighter drop-shadow-2xl">
+                {/* Name Overlay */}
+                <div className="absolute bottom-64 text-center w-full z-30 px-12 flex flex-col items-center gap-6">
+                    <h1 className="text-7xl font-black uppercase italic tracking-tighter drop-shadow-2xl leading-tight">
                         {playerName.split(' ').map((n, i) => (
                             <span key={i} className={i === 1 ? "text-yellow-500 block" : "block"}>{n}</span>
                         ))}
                     </h1>
-                    <p className="text-3xl font-bold text-gray-300 mt-2 uppercase tracking-widest">{teamName}</p>
+                    <p className="text-2xl font-bold text-gray-300 uppercase tracking-widest bg-black/40 inline-block px-8 py-3 rounded-full backdrop-blur-md border border-white/10 shadow-lg">
+                        {teamName}
+                    </p>
                 </div>
             </div>
 
             {/* Footer Stats Strip */}
-            <div className="relative z-40 bg-white/10 backdrop-blur-xl border-t border-white/10 h-48 flex items-center justify-around px-12">
-                {/* Batting Stat */}
-                {(runs !== "0" || runs === "0" && balls !== "0") && (
-                    <div className="text-center">
-                        <p className="text-2xl font-bold text-gray-400 uppercase">Runs</p>
-                        <p className="text-7xl font-black text-white">{runs}<span className="text-4xl text-gray-500">({balls})</span></p>
-                    </div>
-                )}
+            <div className="relative z-40 bg-white/10 backdrop-blur-xl border-t border-white/10 h-48 flex items-center justify-between px-16 gap-8">
+                <div className="flex items-center gap-12 flex-1">
+                    {/* Batting Stat */}
+                    {(runs !== "0" || runs === "0" && balls !== "0") && (
+                        <div className="text-center min-w-[150px]">
+                            <p className="text-xl font-bold text-gray-400 uppercase tracking-wider mb-1">Runs</p>
+                            <p className="text-6xl font-black text-white leading-none">{runs}<span className="text-3xl text-gray-500 ml-1">({balls})</span></p>
+                        </div>
+                    )}
 
-                {/* Vertical Divider */}
-                <div className="w-px h-24 bg-white/20"></div>
+                    {/* Divider if both exist */}
+                    {(runs !== "0" && wickets !== "0") && <div className="w-px h-24 bg-white/20"></div>}
 
-                {/* Bowling Stat */}
-                {(wickets !== "0" || runsConceded !== "0") && (
-                    <div className="text-center">
-                        <p className="text-2xl font-bold text-gray-400 uppercase">Figures</p>
-                        <p className="text-7xl font-black text-white">{wickets}<span className="text-4xl text-gray-500">/{runsConceded}</span></p>
-                    </div>
-                )}
-                {/*  If only one stat, show result instead of second stat? Or always show result on right? */}
+                    {/* Bowling Stat */}
+                    {(wickets !== "0" || runsConceded !== "0") && (
+                        <div className="text-center min-w-[150px]">
+                            <p className="text-xl font-bold text-gray-400 uppercase tracking-wider mb-1">Figures</p>
+                            <p className="text-6xl font-black text-white leading-none">{wickets}<span className="text-3xl text-gray-500 ml-1">/{runsConceded}</span></p>
+                        </div>
+                    )}
+                </div>
+
                 {/* Match Result */}
-                <div className="text-right">
-                    <p className="text-xl font-bold text-yellow-500 uppercase tracking-widest mb-1">Result</p>
-                    <p className="text-3xl font-bold text-white max-w-sm leading-tight">{matchResult}</p>
+                <div className="text-right max-w-sm">
+                    <p className="text-lg font-bold text-yellow-500 uppercase tracking-widest mb-2 border-b-2 border-yellow-500 inline-block pb-1">Match Result</p>
+                    <p className="text-2xl font-bold text-white leading-snug">{matchResult}</p>
                 </div>
             </div>
         </div>
