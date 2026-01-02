@@ -25,6 +25,8 @@ const authRoutes = require('./routes/authRoutes');
 const auctionRoutes = require('./routes/auctionRoutes');
 const teamRoutes = require('./routes/teamRoutes');
 const playerRoutes = require('./routes/playerRoutes');
+const fanRoutes = require('./routes/fanRoutes');
+app.use('/api/fan', fanRoutes);
 
 console.log("Auth Routes Type:", typeof authRoutes);
 console.log("Player Routes Stack:", playerRoutes.stack ? playerRoutes.stack.length : 'No Stack');
@@ -44,6 +46,7 @@ app.use('/api/tournament', require('./routes/tournamentRoutes'));
 app.use('/api/trades', require('./routes/tradeRoutes'));
 app.use('/api/shortlist', require('./routes/shortlistRoutes'));
 app.use('/api/history', require('./routes/historyRoutes'));
+app.use('/api/fan', fanRoutes);
 
 app.get('/', (req, res) => {
     res.send('Cricket Auction API is running...');

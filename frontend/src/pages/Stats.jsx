@@ -85,8 +85,7 @@ const Stats = () => {
         };
 
         const getPlayer = (item) => {
-            if (type === 'mvp') return item;
-            return type === 'runs' ? item.Striker : item.Bowler;
+            return item;
         };
 
         return (

@@ -116,7 +116,8 @@ exports.getComparison = async (req, res) => {
 exports.getLeaderboards = async (req, res) => {
     try {
         console.log("Fetching Leaderboards... Query:", req.query);
-        const { auctionId } = req.query;
+        let { auctionId } = req.query;
+        if (auctionId === 'undefined' || auctionId === 'null') auctionId = undefined;
 
         // 1. Get relevant Fixture IDs (Filter Scope)
         let fixtureFilter = {};
@@ -127,7 +128,6 @@ exports.getLeaderboards = async (req, res) => {
             });
             const fixtureIds = fixtures.map(f => f.id);
             if (fixtureIds.length === 0) {
-                // No fixtures, so no stats
                 return res.json({ batters: [], bowlers: [], mvp: [] });
             }
             fixtureFilter = { fixture_id: fixtureIds };
@@ -140,26 +140,13 @@ exports.getLeaderboards = async (req, res) => {
                 'striker_id',
                 [sequelize.fn('SUM', sequelize.col('runs_scored')), 'total_runs'],
                 [sequelize.fn('COUNT', sequelize.col('ScoreBall.id')), 'balls_faced'],
-                // Count 4s
                 [sequelize.literal("SUM(CASE WHEN runs_scored = 4 THEN 1 ELSE 0 END)"), 'fours'],
-                // Count 6s
                 [sequelize.literal("SUM(CASE WHEN runs_scored = 6 THEN 1 ELSE 0 END)"), 'sixes']
             ],
             where: fixtureFilter,
             group: ['striker_id'],
             order: [[sequelize.literal('total_runs'), 'DESC']],
-            limit: 10,
-            include: [{
-                model: Player,
-                as: 'Striker',
-                attributes: ['id', 'name', 'image_path'],
-                include: [{
-                    model: AuctionPlayer,
-                    where: { auction_id: auctionId },
-                    required: false,
-                    include: [{ model: Team, attributes: ['id', 'name', 'short_name', 'image_path'] }]
-                }]
-            }]
+            limit: 10
         });
 
         // --- BOWLERS (Purple Cap) ---
@@ -168,7 +155,6 @@ exports.getLeaderboards = async (req, res) => {
             attributes: [
                 'bowler_id',
                 [sequelize.literal("COUNT(CASE WHEN is_wicket = 1 AND wicket_type != 'Run Out' THEN 1 ELSE NULL END)"), 'total_wickets'],
-                // Overs calculation is complex, approx by balls / 6
                 [sequelize.fn('COUNT', sequelize.col('ScoreBall.id')), 'balls_bowled'],
                 [sequelize.literal("SUM(runs_scored + extras)"), 'runs_conceded']
             ],
@@ -178,21 +164,12 @@ exports.getLeaderboards = async (req, res) => {
             },
             group: ['bowler_id'],
             order: [[sequelize.literal('total_wickets'), 'DESC']],
-            limit: 10,
-            include: [{
-                model: Player,
-                as: 'Bowler',
-                attributes: ['id', 'name', 'image_path'],
-                include: [{
-                    model: AuctionPlayer,
-                    where: { auction_id: auctionId },
-                    required: false,
-                    include: [{ model: Team, attributes: ['id', 'name', 'short_name', 'image_path'] }]
-                }]
-            }]
+            limit: 10
         });
 
         // --- MVP POINTS ---
+        // We need to fetch raw data to calculate points because logic is complex
+        // Alternatively, use complex literals. For now, fetch raw is safer for correctness.
         const mvpList = await ScoreBall.findAll({
             attributes: [
                 'striker_id', 'bowler_id', 'fielder_id',
@@ -234,73 +211,100 @@ exports.getLeaderboards = async (req, res) => {
             .sort(([, a], [, b]) => b - a)
             .slice(0, 10);
 
-        const mvpIds = sortedMVP.map(([id]) => id);
-        let mvpPlayers = [];
-
-        if (mvpIds.length > 0) {
-            mvpPlayers = await Player.findAll({
-                where: { id: mvpIds },
+        // --- ENRICH DATA WITH PLAYER/TEAM INFO ---
+        // Need to manually fetch player details for the IDs obtained
+        const enrichStats = async (list, idKey) => {
+            if (list.length === 0) return [];
+            const ids = list.map(item => item[idKey] || item.dataValues[idKey]);
+            const players = await Player.findAll({
+                where: { id: ids },
                 include: [{
                     model: AuctionPlayer,
-                    where: { auction_id: auctionId },
+                    where: auctionId ? { auction_id: auctionId } : {},
                     required: false,
-                    include: [{ model: Team, attributes: ['name', 'short_name', 'image_path'] }]
+                    include: [{ model: Team, attributes: ['id', 'name', 'short_name', 'image_path'] }]
                 }]
             });
-        }
 
-        // Helper to flatten Player -> AuctionPlayer -> Team to Player.Team
-        const flattenTeam = (list, key) => {
             return list.map(item => {
-                const plain = item.toJSON ? item.toJSON() : item;
-                const player = plain[key];
-                if (player && player.AuctionPlayers && player.AuctionPlayers.length > 0) {
-                    player.Team = player.AuctionPlayers[0].Team;
-                    if (player.AuctionPlayers[0].image_path) {
-                        player.image_path = player.AuctionPlayers[0].image_path;
+                const id = item[idKey] || item.dataValues[idKey];
+                const p = players.find(x => x.id == id);
+                let team = null;
+                let image = p?.image_path || 'uploads/default_player.png';
+
+                if (p && p.AuctionPlayers && p.AuctionPlayers.length > 0) {
+                    // Get the most relevant auction player entry
+                    // logic: matches auctionId if provided, else first one
+                    const ap = auctionId
+                        ? p.AuctionPlayers.find(a => a.auction_id == auctionId)
+                        : p.AuctionPlayers[0];
+
+                    if (ap) {
+                        team = ap.Team;
+                        if (ap.image_path) image = ap.image_path;
                     }
-                    delete player.AuctionPlayers;
-                } else if (player) {
-                    player.Team = null;
                 }
-                return plain;
+
+                return {
+                    ...item.dataValues, // The stats (total_runs, etc)
+                    id: id,
+                    name: p?.name || 'Unknown',
+                    image: image,
+                    Team: team ? {
+                        name: team.name,
+                        short_name: team.short_name,
+                        image_path: team.image_path
+                    } : null
+                };
             });
         };
 
-        // Flatten Batters and Bowlers
-        const flatBatters = flattenTeam(batters, 'Striker');
-        const flatBowlers = flattenTeam(bowlers, 'Bowler');
+        const enrichedBatters = await enrichStats(batters, 'striker_id');
+        const enrichedBowlers = await enrichStats(bowlers, 'bowler_id');
 
-        // Fix MVP Team mapping
-        const mvpLeaderboard = sortedMVP.map(([id, points]) => {
-            const p = mvpPlayers.find(pl => pl.id == id);
+        // MVP Enrichment
+        const mvpIds = sortedMVP.map(([id]) => id);
+        const mvpPlayers = await Player.findAll({
+            where: { id: mvpIds },
+            include: [{
+                model: AuctionPlayer,
+                where: auctionId ? { auction_id: auctionId } : {},
+                required: false,
+                include: [{ model: Team, attributes: ['id', 'name', 'short_name', 'image_path'] }]
+            }]
+        });
 
-            // Extract Team/Image from AuctionPlayer
+        const finalMVP = sortedMVP.map(([id, points]) => {
+            const p = mvpPlayers.find(x => x.id == id);
             let team = null;
-            let image = p?.image_path || p?.image;
+            let image = p?.image_path || 'uploads/default_player.png';
 
-            if (p) {
-                const aps = p.AuctionPlayers || (p.dataValues && p.dataValues.AuctionPlayers);
-                if (aps && aps.length > 0) {
-                    team = aps[0].Team || (aps[0].dataValues && aps[0].dataValues.Team);
-                    if (aps[0].image_path) image = aps[0].image_path;
+            if (p && p.AuctionPlayers && p.AuctionPlayers.length > 0) {
+                const ap = auctionId
+                    ? p.AuctionPlayers.find(a => a.auction_id == auctionId)
+                    : p.AuctionPlayers[0];
+                if (ap) {
+                    team = ap.Team;
+                    if (ap.image_path) image = ap.image_path;
                 }
             }
-
             return {
                 id,
                 points,
                 name: p?.name || 'Unknown',
-                team: team || {},
-                image: image,
-                status: 'Unknown'
+                image,
+                Team: team ? {
+                    name: team.name,
+                    short_name: team.short_name,
+                    image_path: team.image_path
+                } : null
             };
         });
 
         res.json({
-            batters: flatBatters,
-            bowlers: flatBowlers,
-            mvp: mvpLeaderboard
+            batters: enrichedBatters,
+            bowlers: enrichedBowlers,
+            mvp: finalMVP
         });
 
     } catch (error) {

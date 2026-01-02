@@ -9,10 +9,51 @@ const PointsTable = require('./PointsTable')(sequelize);
 const Trade = require('./Trade')(sequelize);
 const Bid = require('./Bid')(sequelize);
 const TeamShortlist = require('./TeamShortlist')(sequelize);
+const Prediction = require('./Prediction')(sequelize);
+const FantasyTeam = require('./FantasyTeam')(sequelize);
+const FantasyPlayer = require('./FantasyPlayer')(sequelize);
 
 // Associations
 
 const AuctionPlayer = require('./AuctionPlayer')(sequelize);
+
+// ... (previous associations remain) ...
+
+// Prediction Associations
+Prediction.belongsTo(User, { foreignKey: 'user_id' });
+Prediction.belongsTo(Fixture, { foreignKey: 'fixture_id' });
+Prediction.belongsTo(Team, { as: 'PredictedWinner', foreignKey: 'predicted_winner_id' });
+User.hasMany(Prediction, { foreignKey: 'user_id' });
+Fixture.hasMany(Prediction, { foreignKey: 'fixture_id' });
+
+// Fantasy Associations
+FantasyTeam.belongsTo(User, { foreignKey: 'user_id' });
+FantasyTeam.belongsTo(Auction, { foreignKey: 'auction_id' });
+FantasyTeam.belongsTo(Fixture, { foreignKey: 'fixture_id' });
+User.hasMany(FantasyTeam, { foreignKey: 'user_id' });
+
+FantasyTeam.hasMany(FantasyPlayer, { foreignKey: 'fantasy_team_id', onDelete: 'CASCADE' });
+FantasyPlayer.belongsTo(FantasyTeam, { foreignKey: 'fantasy_team_id' });
+
+FantasyPlayer.belongsTo(Player, { foreignKey: 'player_id' });
+
+module.exports = {
+    sequelize,
+    User,
+    Auction,
+    Team,
+    Player,
+    Fixture,
+    AuctionPlayer,
+    ScoreBall,
+    PointsTable,
+    Trade,
+    Bid,
+    TeamShortlist,
+    Prediction,
+    FantasyTeam,
+    FantasyPlayer
+};
 
 // Associations
 
@@ -109,5 +150,8 @@ module.exports = {
     PointsTable,
     Trade,
     Bid,
-    TeamShortlist
+    TeamShortlist,
+    Prediction,
+    FantasyTeam,
+    FantasyPlayer
 };

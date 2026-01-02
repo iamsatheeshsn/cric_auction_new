@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FiHome, FiGrid, FiUsers, FiLogOut, FiSettings, FiActivity, FiPieChart, FiAward, FiSun, FiMoon, FiChevronDown, FiChevronUp, FiLock, FiX, FiList } from 'react-icons/fi';
+import { FiHome, FiGrid, FiUsers, FiLogOut, FiSettings, FiActivity, FiPieChart, FiAward, FiSun, FiMoon, FiChevronDown, FiChevronUp, FiLock, FiX, FiList, FiTarget } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
 import Logo from './Logo';
 
@@ -43,7 +43,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                 { path: '/analytics', label: 'Analytics', icon: <FiPieChart /> },
                 { path: '/compare', label: 'Play Comparison', icon: <FiUsers /> },
             ]
-        }
+        },
+        { type: 'link', path: '/fanzone', label: 'Fan Zone', icon: <FiTarget /> }
     ];
 
     const handleLogout = () => {
