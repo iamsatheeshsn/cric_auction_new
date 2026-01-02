@@ -497,7 +497,7 @@ exports.simulateMatch = async (req, res) => {
 
         const team1Players = getPlayers(fixture.Team1);
         const team2Players = getPlayers(fixture.Team2);
-        
+
         console.log(`Players Loaded: Team1=${team1Players.length}, Team2=${team2Players.length}`);
 
         // Current State
@@ -507,7 +507,7 @@ exports.simulateMatch = async (req, res) => {
         });
 
         let currentInnings = fixture.current_innings || 1;
-        
+
         if (fixture.status === 'Scheduled') {
             const tossWinner = Math.random() > 0.5 ? fixture.Team1 : fixture.Team2;
             const decision = Math.random() > 0.5 ? 'Bat' : 'Bowl';
@@ -520,7 +520,7 @@ exports.simulateMatch = async (req, res) => {
         }
 
         const generatedBalls = [];
-        
+
         let simState = {
             innings: currentInnings,
             balls: existingBalls,
@@ -534,22 +534,22 @@ exports.simulateMatch = async (req, res) => {
         };
 
         existingBalls.forEach(b => {
-             const inn = b.innings;
-             simState.score[inn].runs += b.runs_scored + b.extras;
-             if (b.is_wicket) {
-                 simState.score[inn].wickets++;
-                 simState.outPlayers[inn].push(b.player_out_id);
-             }
-             if(b.extra_type !== 'Wide' && b.extra_type !== 'NoBall') {
-                 simState.score[inn].legalBalls++;
-             }
+            const inn = b.innings;
+            simState.score[inn].runs += b.runs_scored + b.extras;
+            if (b.is_wicket) {
+                simState.score[inn].wickets++;
+                simState.outPlayers[inn].push(b.player_out_id);
+            }
+            if (b.extra_type !== 'Wide' && b.extra_type !== 'NoBall') {
+                simState.score[inn].legalBalls++;
+            }
         });
 
         const getTeamsForInnings = (inn) => {
-            const isTeam1BattingFirst = fixture.toss_decision === 'Bat' ? 
-                (fixture.toss_winner_id === fixture.Team1.id) : 
+            const isTeam1BattingFirst = fixture.toss_decision === 'Bat' ?
+                (fixture.toss_winner_id === fixture.Team1.id) :
                 (fixture.toss_winner_id !== fixture.Team1.id);
-            
+
             if (inn === 1) {
                 return isTeam1BattingFirst ? { bat: fixture.Team1, bowl: fixture.Team2 } : { bat: fixture.Team2, bowl: fixture.Team1 };
             } else {
@@ -560,11 +560,11 @@ exports.simulateMatch = async (req, res) => {
         let safetyCounter = 0;
         while (!simState.matchOver && safetyCounter < 1000) {
             safetyCounter++;
-            
+
             const { bat: batTeam, bowl: bowlTeam } = getTeamsForInnings(simState.innings);
             const batPlayers = getPlayers(batTeam);
             const bowlPlayers = getPlayers(bowlTeam);
-            
+
             // Validate Players
             if (batPlayers.length === 0 || bowlPlayers.length === 0) {
                 console.error("Simulation Aborted: Missing players in one of the teams.");
@@ -572,22 +572,22 @@ exports.simulateMatch = async (req, res) => {
             }
 
             let availableBatsmen = batPlayers.filter(p => !simState.outPlayers[simState.innings].includes(p.id));
-            
+
             let striker, nonStriker;
-            
+
             const innBalls = [...simState.balls, ...generatedBalls].filter(b => b.innings === simState.innings);
-            
+
             if (innBalls.length > 0) {
                 const lastBall = innBalls[innBalls.length - 1];
-                if(lastBall.is_wicket) {
+                if (lastBall.is_wicket) {
                     const outId = lastBall.player_out_id;
                     const surviverId = (lastBall.striker_id === outId) ? lastBall.non_striker_id : lastBall.striker_id;
                     const survivor = batPlayers.find(p => p.id === surviverId);
-                    
+
                     if (!survivor) {
                         // Fallback logic if survivor ID is invalid (rare)
-                         striker = availableBatsmen[0];
-                         nonStriker = availableBatsmen[1];
+                        striker = availableBatsmen[0];
+                        nonStriker = availableBatsmen[1];
                     } else {
                         const nextBat = availableBatsmen.find(p => p.id !== survivor.id);
                         striker = nextBat;
@@ -604,37 +604,37 @@ exports.simulateMatch = async (req, res) => {
 
             // Fallback if striker missing (All Out or Logic Gap)
             if (!striker || !nonStriker) {
-                 // Force All Out
-                 simState.score[simState.innings].wickets = 10; // Max
-                 // Trigger inning/match change logic below
+                // Force All Out
+                simState.score[simState.innings].wickets = 10; // Max
+                // Trigger inning/match change logic below
             }
 
             const bowlerCount = Math.max(1, Math.min(5, bowlPlayers.length));
             const bowlers = bowlPlayers.slice(0, bowlerCount);
-            
+
             const legalBallsSoFar = simState.score[simState.innings].legalBalls;
             const currentOver = Math.floor(legalBallsSoFar / 6);
             const ballsInThisOver = legalBallsSoFar % 6;
-            
+
             const bowlerIndex = currentOver % bowlerCount;
             const bowler = bowlers[bowlerIndex];
 
             const totalOvers = fixture.total_overs || 20;
             const maxWickets = Math.min(10, batPlayers.length - 1);
-            
+
             // EXIT CONDITIONS
             const wicketsDown = simState.score[simState.innings].wickets;
-            
+
             if (currentOver >= totalOvers || wicketsDown >= maxWickets || !striker) {
-                 if (simState.innings === 1) {
-                     simState.innings = 2;
-                     continue;
-                 } else {
-                     simState.matchOver = true;
-                     break; 
-                 }
+                if (simState.innings === 1) {
+                    simState.innings = 2;
+                    continue;
+                } else {
+                    simState.matchOver = true;
+                    break;
+                }
             }
-            
+
             if (simState.innings === 2) {
                 const target = simState.score[1].runs + 1;
                 if (simState.score[2].runs >= target) {
@@ -643,35 +643,68 @@ exports.simulateMatch = async (req, res) => {
                 }
             }
 
+            // --- TARGET SCORE LOGIC (Custom) ---
+            const customTarget = parseInt(req.body.target_score);
+            if (!isNaN(customTarget) && simState.score[simState.innings].runs >= customTarget) {
+                // If it's Innings 1, we just swich innings? Or stop if only simulating this fixture.
+                // If Innings 1 reaches target, it declares/ends over.
+                // Wait, simulation handles "Switch to Innings 2" if innings 1 ends.
+                if (simState.innings === 1) {
+                    simState.innings = 2;
+                    continue; // Start Innings 2 loop
+                } else {
+                    simState.matchOver = true;
+                    break;
+                }
+            }
+            // -----------------------------------
+
             // Safe Role Access
             const batRole = striker?.role || 'Batsman';
             const bowlRole = bowler?.role || 'Bowler';
-            
+
             let runProb = (batRole === 'Bowler') ? [60, 20, 5, 0, 10, 5] : [30, 35, 10, 0, 15, 10];
             let wicketProb = (batRole === 'Bowler') ? 15 : 3;
 
+            // --- FORCED WINNER LOGIC ---
+            if (req.body.forced_winner_id) {
+                const forcedId = String(req.body.forced_winner_id);
+                const isWinnerBatting = String(batTeam.id) === forcedId;
+
+                // If Winner is Batting -> Boost Runs, Lower Wickets
+                if (isWinnerBatting) {
+                    runProb = [10, 20, 15, 0, 30, 25]; // Heavily skewed to boundaries
+                    wicketProb = 1; // Very low wicket chance
+                } else {
+                    // If Loser is Batting -> Limit Runs, Increase Wickets
+                    runProb = [70, 25, 5, 0, 0, 0]; // Mostly dots/singles
+                    wicketProb = 25; // High wicket chance
+                }
+            }
+            // ---------------------------
+
             const roll = Math.random() * 100;
             let outcome = {};
-            
+
             if (roll < wicketProb) {
                 const types = ['Caught', 'Bowled', 'lbw'];
-                outcome = { type: 'Wicket', runs: 0, wicketType: types[Math.floor(Math.random()*types.length)] };
+                outcome = { type: 'Wicket', runs: 0, wicketType: types[Math.floor(Math.random() * types.length)] };
             } else {
                 const runRoll = Math.random() * 100;
                 let runs = 0;
-                const sum = runProb.reduce((a,b)=>a+b,0);
-                const normalized = runProb.map(p => (p/sum)*100);
-                
+                const sum = runProb.reduce((a, b) => a + b, 0);
+                const normalized = runProb.map(p => (p / sum) * 100);
+
                 if (runRoll < normalized[0]) runs = 0;
-                else if (runRoll < normalized[0]+normalized[1]) runs = 1;
-                else if (runRoll < normalized[0]+normalized[1]+normalized[2]) runs = 2;
-                else if (runRoll < normalized[0]+normalized[1]+normalized[2]+normalized[3]) runs = 3;
-                else if (runRoll < normalized[0]+normalized[1]+normalized[2]+normalized[3]+normalized[4]) runs = 4;
+                else if (runRoll < normalized[0] + normalized[1]) runs = 1;
+                else if (runRoll < normalized[0] + normalized[1] + normalized[2]) runs = 2;
+                else if (runRoll < normalized[0] + normalized[1] + normalized[2] + normalized[3]) runs = 3;
+                else if (runRoll < normalized[0] + normalized[1] + normalized[2] + normalized[3] + normalized[4]) runs = 4;
                 else runs = 6;
-                
+
                 outcome = { type: 'Runs', runs: runs };
             }
-            
+
             let comm = "";
             let pOutId = null;
             let wDetails = null;
@@ -697,7 +730,7 @@ exports.simulateMatch = async (req, res) => {
                 non_striker_id: nonStriker.id,
                 bowler_id: bowler.id,
                 runs_scored: outcome.runs || 0,
-                extras: 0, 
+                extras: 0,
                 extra_type: 'None',
                 is_wicket: outcome.type === 'Wicket',
                 wicket_type: wDetails,
@@ -707,7 +740,7 @@ exports.simulateMatch = async (req, res) => {
             };
 
             generatedBalls.push(ballData);
-            
+
             simState.score[simState.innings].runs += ballData.runs_scored;
             simState.score[simState.innings].legalBalls++;
             if (ballData.is_wicket) {
@@ -715,7 +748,7 @@ exports.simulateMatch = async (req, res) => {
                 simState.outPlayers[simState.innings].push(striker.id);
             }
         }
-        
+
         console.log(`Simulation Loop Ended. Generated ${generatedBalls.length} balls.`);
 
         if (generatedBalls.length > 0) {
@@ -724,39 +757,39 @@ exports.simulateMatch = async (req, res) => {
 
         if (simState.matchOver) {
             fixture.status = 'Completed';
-            
-             const { bat: bat1 } = getTeamsForInnings(1);
-             const { bat: bat2 } = getTeamsForInnings(2);
-             const s1 = simState.score[1];
-             const s2 = simState.score[2];
-             
-             let resultText = "";
-             let winId = null;
 
-             if (s2.runs > s1.runs) {
-                 winId = bat2.id;
-                 resultText = `${bat2.name} won by ${10 - s2.wickets} wickets (Simulated)`;
-             } else if (s1.runs > s2.runs) {
-                 winId = bat1.id;
-                 resultText = `${bat1.name} won by ${s1.runs - s2.runs} runs (Simulated)`;
-             } else {
-                 resultText = "Match Tied (Simulated)";
-             }
-             
-             fixture.result_description = resultText;
-             fixture.winning_team_id = winId;
-             fixture.current_innings = 2; 
+            const { bat: bat1 } = getTeamsForInnings(1);
+            const { bat: bat2 } = getTeamsForInnings(2);
+            const s1 = simState.score[1];
+            const s2 = simState.score[2];
 
-             fixture.team1_runs = (bat1.id === fixture.team1_id) ? s1.runs : s2.runs;
-             fixture.team1_wickets = (bat1.id === fixture.team1_id) ? s1.wickets : s2.wickets;
-             fixture.team2_runs = (bat1.id !== fixture.team1_id) ? s1.runs : s2.runs;
-             fixture.team2_wickets = (bat1.id !== fixture.team1_id) ? s1.wickets : s2.wickets;
-             
-             await fixture.save();
-             
-             if (fixture.auction_id) {
-                 await recalculateAuctionPoints(fixture.auction_id);
-             }
+            let resultText = "";
+            let winId = null;
+
+            if (s2.runs > s1.runs) {
+                winId = bat2.id;
+                resultText = `${bat2.name} won by ${10 - s2.wickets} wickets (Simulated)`;
+            } else if (s1.runs > s2.runs) {
+                winId = bat1.id;
+                resultText = `${bat1.name} won by ${s1.runs - s2.runs} runs (Simulated)`;
+            } else {
+                resultText = "Match Tied (Simulated)";
+            }
+
+            fixture.result_description = resultText;
+            fixture.winning_team_id = winId;
+            fixture.current_innings = 2;
+
+            fixture.team1_runs = (bat1.id === fixture.team1_id) ? s1.runs : s2.runs;
+            fixture.team1_wickets = (bat1.id === fixture.team1_id) ? s1.wickets : s2.wickets;
+            fixture.team2_runs = (bat1.id !== fixture.team1_id) ? s1.runs : s2.runs;
+            fixture.team2_wickets = (bat1.id !== fixture.team1_id) ? s1.wickets : s2.wickets;
+
+            await fixture.save();
+
+            if (fixture.auction_id) {
+                await recalculateAuctionPoints(fixture.auction_id);
+            }
         }
 
         res.json({ message: 'Simulation Completed', ballsGenerated: generatedBalls.length });

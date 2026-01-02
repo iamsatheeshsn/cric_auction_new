@@ -57,6 +57,19 @@ module.exports = (sequelize) => {
         current_bidder_id: {
             type: DataTypes.INTEGER,
             allowNull: true
+        },
+        // Tournament History
+        winner_team_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true
+        },
+        runner_up_team_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true
+        },
+        man_of_the_series_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true
         }
     });
 

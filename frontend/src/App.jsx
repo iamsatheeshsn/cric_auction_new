@@ -23,6 +23,7 @@ import TransferWindow from './pages/TransferWindow';
 import BroadcastView from './pages/BroadcastView';
 import StrategyDashboard from './pages/StrategyDashboard';
 import SocialMediaTools from './pages/SocialMediaTools';
+import TournamentHistory from './pages/TournamentHistory';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ThemeProvider } from './context/ThemeContext';
 
@@ -69,8 +70,8 @@ function App() {
               {/* Strategy Dashboard */}
               <Route path="/strategy" element={<ProtectedRoute><StrategyDashboard /></ProtectedRoute>} />
 
-              {/* Social Media Studio */}
               <Route path="/social-tools" element={<ProtectedRoute><SocialMediaTools /></ProtectedRoute>} />
+              <Route path="/history" element={<ProtectedRoute><TournamentHistory /></ProtectedRoute>} />
             </Routes>
 
           </div>

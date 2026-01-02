@@ -214,6 +214,16 @@ exports.markKnockoutWinner = async (req, res) => {
                 final.team2_id = winnerIdInt;
                 await final.save();
             }
+        } else if (fixture.stage === 'Final') {
+            // 3. Update Auction History since Final is done
+            console.log(`[MarkWinner] FINAL Completed. Updating Auction History for AuctionID: ${auctionId}`);
+            const auction = await Auction.findByPk(auctionId);
+            if (auction) {
+                auction.winner_team_id = winnerIdInt;
+                auction.runner_up_team_id = loserId;
+                await auction.save();
+                console.log(`[MarkWinner] Auction ${auctionId} updated. Winner: ${winnerIdInt}, RunnerUp: ${loserId}`);
+            }
         }
 
         res.json({ message: 'Winner updated and progression handled.', fixture });

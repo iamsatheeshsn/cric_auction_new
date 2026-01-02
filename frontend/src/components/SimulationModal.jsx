@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiCpu, FiAlertTriangle, FiCheckCircle, FiX } from 'react-icons/fi';
 
-const SimulationModal = ({ isOpen, onClose, onConfirm }) => {
+const SimulationModal = ({ isOpen, onClose, onConfirm, teams }) => {
+    const [winnerId, setWinnerId] = useState('');
+    const [targetScore, setTargetScore] = useState('');
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -44,14 +47,47 @@ const SimulationModal = ({ isOpen, onClose, onConfirm }) => {
                                 <h3 className="text-2xl font-black text-gray-900 mb-2">Auto-Simulate Match</h3>
                                 <p className="text-indigo-600 font-medium text-sm uppercase tracking-wider mb-6">AI-Powered Probability Engine</p>
 
-                                <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 mb-8 text-left">
+                                <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 mb-6 text-left">
                                     <div className="flex gap-3">
                                         <FiAlertTriangle className="text-amber-500 w-5 h-5 flex-shrink-0 mt-0.5" />
                                         <div className="text-sm text-gray-700">
                                             <p className="font-bold text-gray-900 mb-1">Warning: Irreversible Action</p>
-                                            <p>This will simulate the <strong>remainder of this innings/match</strong> instantly based on player roles and probabilities. Manual scoring will be skipped.</p>
+                                            <p>This will simulate the <strong>remainder of this innings/match</strong> instantly based on player roles and probabilities.</p>
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* Winner Selection */}
+                                <div className="mb-4 text-left">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Force Winner (Optional)</label>
+                                    <div className="relative">
+                                        <select
+                                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 appearance-none focus:ring-2 focus:ring-indigo-100 outline-none"
+                                            onChange={(e) => setWinnerId(e.target.value)}
+                                            defaultValue=""
+                                        >
+                                            <option value="">Auto / Random Result</option>
+                                            {teams && teams.map(t => (
+                                                <option key={t.id} value={t.id}>{t.name} to Win</option>
+                                            ))}
+                                        </select>
+                                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7"></path></svg>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Target Score Selection */}
+                                <div className="mb-8 text-left">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Target/Total Score (Optional)</label>
+                                    <input
+                                        type="number"
+                                        placeholder="e.g. 180"
+                                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-700 focus:ring-2 focus:ring-indigo-100 outline-none placeholder-gray-400"
+                                        value={targetScore}
+                                        onChange={(e) => setTargetScore(e.target.value)}
+                                    />
+                                    <p className="text-xs text-gray-400 mt-2 ml-1">Simulate until this score is reached (if possible).</p>
                                 </div>
 
                                 <div className="flex gap-4">
@@ -62,7 +98,7 @@ const SimulationModal = ({ isOpen, onClose, onConfirm }) => {
                                         Cancel
                                     </button>
                                     <button
-                                        onClick={onConfirm}
+                                        onClick={() => onConfirm(winnerId, targetScore)}
                                         className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold shadow-lg shadow-indigo-200 hover:shadow-indigo-300 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                                     >
                                         <FiCpu className="w-5 h-5" />

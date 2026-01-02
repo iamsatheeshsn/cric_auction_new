@@ -62,6 +62,11 @@ AuctionPlayer.belongsTo(Team, { foreignKey: 'team_id' });
 Auction.hasMany(Fixture, { foreignKey: 'auction_id', onDelete: 'CASCADE' });
 Fixture.belongsTo(Auction, { foreignKey: 'auction_id' });
 
+// Tournament History Associations
+Auction.belongsTo(Team, { as: 'Winner', foreignKey: 'winner_team_id' });
+Auction.belongsTo(Team, { as: 'RunnerUp', foreignKey: 'runner_up_team_id' });
+Auction.belongsTo(Player, { as: 'ManOfTheSeries', foreignKey: 'man_of_the_series_id' });
+
 // Team has many Fixtures
 Team.hasMany(Fixture, { as: 'HomeMatches', foreignKey: 'team1_id', onDelete: 'CASCADE' });
 Team.hasMany(Fixture, { as: 'AwayMatches', foreignKey: 'team2_id', onDelete: 'CASCADE' });

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FiHome, FiGrid, FiUsers, FiLogOut, FiSettings, FiActivity, FiPieChart, FiAward, FiSun, FiMoon, FiChevronDown, FiChevronUp, FiLock, FiX } from 'react-icons/fi';
+import { FiHome, FiGrid, FiUsers, FiLogOut, FiSettings, FiActivity, FiPieChart, FiAward, FiSun, FiMoon, FiChevronDown, FiChevronUp, FiLock, FiX, FiList } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
 import Logo from './Logo';
 
@@ -10,14 +10,40 @@ const Sidebar = ({ isOpen, onClose }) => {
     const { theme, toggleTheme } = useTheme();
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-    const menuItems = [
-        { path: '/dashboard', label: 'Dashboard', icon: <FiHome /> },
-        { path: '/auctions', label: 'Auctions', icon: <FiGrid /> },
-        { path: '/players', label: 'Players', icon: <FiUsers /> },
-        { path: '/points', label: 'Points Table', icon: <FiAward /> },
-        { path: '/compare', label: 'Play Comparison', icon: <FiUsers /> },
-        { path: '/stats', label: 'Stats Hub', icon: <FiActivity /> },
-        { path: '/analytics', label: 'Analytics', icon: <FiPieChart /> },
+    const [openGroups, setOpenGroups] = useState({
+        analysis: false,
+        data: false
+    });
+
+    const toggleGroup = (group) => {
+        setOpenGroups(prev => ({ ...prev, [group]: !prev[group] }));
+    };
+
+    const menuGroups = [
+        { type: 'link', path: '/dashboard', label: 'Dashboard', icon: <FiHome /> },
+        { type: 'link', path: '/auctions', label: 'Auctions', icon: <FiGrid /> },
+        { type: 'link', path: '/players', label: 'Players', icon: <FiUsers /> },
+        {
+            type: 'group',
+            id: 'data',
+            label: 'Tournament Data',
+            icon: <FiAward />,
+            items: [
+                { path: '/points', label: 'Points Table', icon: <FiList /> },
+                { path: '/history', label: 'Hall of Fame', icon: <FiAward />, newTab: true },
+            ]
+        },
+        {
+            type: 'group',
+            id: 'analysis',
+            label: 'Analysis Center',
+            icon: <FiPieChart />,
+            items: [
+                { path: '/stats', label: 'Stats Hub', icon: <FiActivity /> },
+                { path: '/analytics', label: 'Analytics', icon: <FiPieChart /> },
+                { path: '/compare', label: 'Play Comparison', icon: <FiUsers /> },
+            ]
+        }
     ];
 
     const handleLogout = () => {
@@ -46,26 +72,60 @@ const Sidebar = ({ isOpen, onClose }) => {
                     <div className="flex items-center gap-3">
                         <Logo className="w-12 h-12" textClassName="text-xl font-bold" />
                     </div>
-                    {/* Cloud Close Button */}
-                    <button
-                        onClick={onClose}
-                        className="md:hidden p-2 text-gray-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
-                    >
-                        <FiX size={24} />
-                    </button>
                 </div>
 
                 <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
-                    {menuItems.map((item) => {
-                        const isActive = location.pathname.startsWith(item.path);
-                        return (
-                            <Link key={item.path} to={item.path} onClick={() => onClose && onClose()}>
-                                <div className={`flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 ${isActive ? 'bg-white/10 text-gold border-r-4 border-gold' : 'hover:bg-white/5 text-gray-300 hover:text-white'}`}>
-                                    <span className="text-xl">{item.icon}</span>
-                                    <span className="font-medium">{item.label}</span>
+                    {menuGroups.map((item, index) => {
+                        if (item.type === 'link') {
+                            const isActive = location.pathname.startsWith(item.path);
+                            return (
+                                <Link key={item.path} to={item.path} onClick={() => onClose && onClose()}>
+                                    <div className={`flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 ${isActive ? 'bg-white/10 text-gold border-r-4 border-gold' : 'hover:bg-white/5 text-gray-300 hover:text-white'}`}>
+                                        <span className="text-xl">{item.icon}</span>
+                                        <span className="font-medium">{item.label}</span>
+                                    </div>
+                                </Link>
+                            );
+                        } else if (item.type === 'group') {
+                            const isOpenGroup = openGroups[item.id];
+                            const isActiveGroup = item.items.some(sub => location.pathname.startsWith(sub.path));
+
+                            return (
+                                <div key={item.id} className="space-y-1">
+                                    <button
+                                        onClick={() => toggleGroup(item.id)}
+                                        className={`flex items-center justify-between w-full px-4 py-3 rounded-lg transition-all ${isActiveGroup || isOpenGroup ? 'text-white bg-white/5' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-xl">{item.icon}</span>
+                                            <span className="font-medium">{item.label}</span>
+                                        </div>
+                                        {isOpenGroup ? <FiChevronUp /> : <FiChevronDown />}
+                                    </button>
+
+                                    {isOpenGroup && (
+                                        <div className="pl-12 space-y-1">
+                                            {item.items.map(sub => {
+                                                const isActive = location.pathname.startsWith(sub.path);
+                                                return (
+                                                    <Link
+                                                        key={sub.path}
+                                                        to={sub.path}
+                                                        onClick={() => onClose && onClose()}
+                                                        target={sub.newTab ? "_blank" : undefined}
+                                                        rel={sub.newTab ? "noopener noreferrer" : undefined}
+                                                    >
+                                                        <div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all ${isActive ? 'text-gold font-bold' : 'text-gray-400 hover:text-white'}`}>
+                                                            <span>{sub.label}</span>
+                                                        </div>
+                                                    </Link>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
-                            </Link>
-                        );
+                            );
+                        }
                     })}
                 </nav>
 

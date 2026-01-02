@@ -446,12 +446,15 @@ const MatchScoring = () => {
         setShowSimModal(true);
     };
 
-    const confirmSimulation = async () => {
+    const confirmSimulation = async (forcedWinnerId, targetScore) => {
         setShowSimModal(false);
 
         try {
             const toastId = toast.loading("Simulating match...");
-            const res = await api.post(`/score/match/${fixtureId}/simulate`);
+            const res = await api.post(`/score/match/${fixtureId}/simulate`, {
+                forced_winner_id: forcedWinnerId,
+                target_score: targetScore
+            });
 
             toast.update(toastId, { render: "Simulation Completed!", type: "success", isLoading: false, autoClose: 3000 });
 
@@ -819,6 +822,7 @@ const MatchScoring = () => {
             const totalRuns = ball.runs_scored + ball.extras;
 
             // Score
+            if (!state[inn]) state[inn] = { runs: 0, wickets: 0 };
             state[inn].runs += totalRuns;
             if (ball.is_wicket) state[inn].wickets += 1;
 
@@ -1757,6 +1761,7 @@ const MatchScoring = () => {
                 isOpen={showSimModal}
                 onClose={() => setShowSimModal(false)}
                 onConfirm={confirmSimulation}
+                teams={fixture ? [fixture.Team1, fixture.Team2].filter(Boolean) : []}
             />
         </Layout>
     );
