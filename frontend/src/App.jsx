@@ -17,6 +17,7 @@ import Analytics from './pages/Analytics';
 import SpectatorView from './pages/SpectatorView';
 import RegisterPage from './pages/RegisterPage';
 import FanZone from './pages/FanZone';
+import Tools from './pages/Tools';
 
 import Settings from './pages/Settings';
 import MatchAnalytics from './pages/MatchAnalytics';
@@ -60,6 +61,7 @@ function App() {
               <Route path="/points" element={<ProtectedRoute><PointsTable /></ProtectedRoute>} />
               <Route path="/auction/:id/points" element={<ProtectedRoute><PointsTable /></ProtectedRoute>} />
               <Route path="/fanzone" element={<ProtectedRoute><FanZone /></ProtectedRoute>} />
+              <Route path="/tools" element={<ProtectedRoute><Tools /></ProtectedRoute>} />
               <Route path="/compare" element={<ProtectedRoute><PlayerComparison /></ProtectedRoute>} />
 
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

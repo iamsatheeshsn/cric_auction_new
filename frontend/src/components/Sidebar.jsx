@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FiHome, FiGrid, FiUsers, FiLogOut, FiSettings, FiActivity, FiPieChart, FiAward, FiSun, FiMoon, FiChevronDown, FiChevronUp, FiLock, FiX, FiList, FiTarget } from 'react-icons/fi';
+import { FaTools } from 'react-icons/fa';
 import { useTheme } from '../context/ThemeContext';
 import Logo from './Logo';
 
@@ -12,7 +13,8 @@ const Sidebar = ({ isOpen, onClose }) => {
 
     const [openGroups, setOpenGroups] = useState({
         analysis: false,
-        data: false
+        data: false,
+        utilities: false
     });
 
     const toggleGroup = (group) => {
@@ -44,7 +46,17 @@ const Sidebar = ({ isOpen, onClose }) => {
                 { path: '/compare', label: 'Play Comparison', icon: <FiUsers /> },
             ]
         },
-        { type: 'link', path: '/fanzone', label: 'Fan Zone', icon: <FiTarget /> }
+
+        { type: 'link', path: '/fanzone', label: 'Fan Zone', icon: <FiTarget /> },
+        {
+            type: 'group',
+            id: 'utilities',
+            label: 'Utilities',
+            icon: <FaTools />,
+            items: [
+                { path: '/tools', label: 'DLS Calculator', icon: <FaTools /> }
+            ]
+        }
     ];
 
     const handleLogout = () => {
