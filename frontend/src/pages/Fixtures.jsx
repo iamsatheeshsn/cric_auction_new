@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiArrowLeft, FiRefreshCw, FiPrinter, FiTrash2, FiCalendar, FiMapPin, FiPlus, FiX, FiEdit, FiSearch, FiChevronLeft, FiChevronRight, FiActivity, FiUsers } from 'react-icons/fi';
+import { FiArrowLeft, FiRefreshCw, FiPrinter, FiTrash2, FiCalendar, FiMapPin, FiPlus, FiX, FiEdit, FiSearch, FiChevronLeft, FiChevronRight, FiActivity, FiUsers, FiShield, FiAward, FiStar, FiCheckCircle } from 'react-icons/fi';
 import api from '../api/axios';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -42,7 +42,8 @@ const Fixtures = () => {
         team1_id: '',
         team2_id: '',
         match_date: '',
-        venue: ''
+        venue: '',
+        match_type: 'Tournament'
     });
 
     // Edit Modal State
@@ -194,7 +195,7 @@ const Fixtures = () => {
             });
             toast.success("Match created successfully!");
             setShowCreateModal(false);
-            setNewMatch({ team1_id: '', team2_id: '', match_date: '', venue: '' });
+            setNewMatch({ team1_id: '', team2_id: '', match_date: '', venue: '', match_type: 'Tournament' });
             fetchFixtures();
         } catch (error) {
             console.error("Failed to create match", error);
@@ -297,7 +298,12 @@ const Fixtures = () => {
                                 className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col gap-2 hover:shadow-md transition-shadow print:shadow-none print:border-gray-800"
                             >
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Match #{match.match_order}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Match #{match.match_order}</span>
+                                        {match.match_type === 'Friendly' && (
+                                            <span className="bg-yellow-100 text-yellow-800 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border border-yellow-200">Friendly</span>
+                                        )}
+                                    </div>
                                     <div className="flex gap-2 items-center">
                                         <button
                                             onClick={() => handleEditClick(match)}
@@ -317,6 +323,7 @@ const Fixtures = () => {
                                         </button>
                                     </div>
                                 </div>
+
 
                                 <div className="flex items-center justify-between gap-4">
                                     {/* Team 1 */}
@@ -418,81 +425,141 @@ const Fixtures = () => {
             {/* Create Match Modal */}
             <AnimatePresence>
                 {showCreateModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]"
                         >
-                            <div className="flex justify-between items-center p-6 border-b border-gray-100">
-                                <h3 className="text-lg font-bold text-gray-800">Create New Match</h3>
-                                <button onClick={() => setShowCreateModal(false)} className="text-gray-400 hover:text-gray-600"><FiX size={20} /></button>
+                            {/* Header */}
+                            <div className="bg-gradient-to-r from-deep-blue to-blue-800 p-6 text-white flex justify-between items-start shrink-0">
+                                <div>
+                                    <h3 className="text-2xl font-bold flex items-center gap-2">
+                                        <FiCalendar className="text-blue-300" /> New Match
+                                    </h3>
+                                    <p className="text-blue-200 text-sm mt-1">Schedule a new fixture for the auction.</p>
+                                </div>
+                                <button
+                                    onClick={() => setShowCreateModal(false)}
+                                    className="text-blue-200 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors"
+                                >
+                                    <FiX size={20} />
+                                </button>
                             </div>
-                            <form onSubmit={handleCreateMatch} className="p-6 space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Team 1</label>
-                                    <select
-                                        required
-                                        className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-deep-blue focus:border-transparent outline-none"
-                                        value={newMatch.team1_id}
-                                        onChange={(e) => setNewMatch({ ...newMatch, team1_id: e.target.value })}
-                                    >
-                                        <option value="">Select Team</option>
-                                        {teams.map(team => (
-                                            <option key={team.id} value={team.id} disabled={team.id == newMatch.team2_id}>{team.name} ({team.short_name})</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="flex justify-center items-center py-2 text-gray-400 font-bold">VS</div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Team 2</label>
-                                    <select
-                                        required
-                                        className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-deep-blue focus:border-transparent outline-none"
-                                        value={newMatch.team2_id}
-                                        onChange={(e) => setNewMatch({ ...newMatch, team2_id: e.target.value })}
-                                    >
-                                        <option value="">Select Team</option>
-                                        {teams.map(team => (
-                                            <option key={team.id} value={team.id} disabled={team.id == newMatch.team1_id}>{team.name} ({team.short_name})</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                                        <input
-                                            type="datetime-local"
-                                            className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-deep-blue outline-none"
-                                            value={newMatch.match_date}
-                                            onChange={(e) => setNewMatch({ ...newMatch, match_date: e.target.value })}
-                                        />
+
+                            <form onSubmit={handleCreateMatch} className="p-6 overflow-y-auto custom-scrollbar flex-1 flex flex-col gap-6">
+                                <FormSection title="Choose Teams">
+                                    <div className="flex items-center gap-4 justify-between">
+                                        <div className="flex-1">
+                                            <div className="relative group">
+                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-deep-blue">
+                                                    <FiShield />
+                                                </div>
+                                                <select
+                                                    required
+                                                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-deep-blue focus:border-transparent outline-none transition-all font-medium appearance-none cursor-pointer hover:bg-white"
+                                                    value={newMatch.team1_id}
+                                                    onChange={(e) => setNewMatch({ ...newMatch, team1_id: e.target.value })}
+                                                >
+                                                    <option value="">Team 1</option>
+                                                    {teams.map(team => (
+                                                        <option key={team.id} value={team.id} disabled={team.id == newMatch.team2_id}>{team.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 text-gray-400 font-black text-xs border-2 border-white shadow-sm z-10">
+                                            VS
+                                        </div>
+
+                                        <div className="flex-1">
+                                            <div className="relative group">
+                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-deep-blue">
+                                                    <FiShield />
+                                                </div>
+                                                <select
+                                                    required
+                                                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-deep-blue focus:border-transparent outline-none transition-all font-medium appearance-none cursor-pointer hover:bg-white"
+                                                    value={newMatch.team2_id}
+                                                    onChange={(e) => setNewMatch({ ...newMatch, team2_id: e.target.value })}
+                                                >
+                                                    <option value="">Team 2</option>
+                                                    {teams.map(team => (
+                                                        <option key={team.id} value={team.id} disabled={team.id == newMatch.team1_id}>{team.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Venue</label>
-                                        <input
-                                            type="text"
-                                            className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-deep-blue outline-none"
-                                            placeholder="Stadium Name"
-                                            value={newMatch.venue}
-                                            onChange={(e) => setNewMatch({ ...newMatch, venue: e.target.value })}
-                                        />
-                                    </div>
+                                </FormSection>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <FormSection title="Match Type">
+                                        <div className="grid grid-cols-2 gap-4 h-full">
+                                            <MatchTypeCard
+                                                type="Tournament"
+                                                icon={<FiAward className="text-xl" />}
+                                                selected={newMatch.match_type === 'Tournament'}
+                                                onClick={() => setNewMatch({ ...newMatch, match_type: 'Tournament' })}
+                                                description="Points & NRR counted"
+                                            />
+                                            <MatchTypeCard
+                                                type="Friendly"
+                                                icon={<FiStar className="text-xl" />}
+                                                selected={newMatch.match_type === 'Friendly'}
+                                                onClick={() => setNewMatch({ ...newMatch, match_type: 'Friendly' })}
+                                                description="Practice match only"
+                                            />
+                                        </div>
+                                    </FormSection>
+
+                                    <FormSection title="Details">
+                                        <div className="flex flex-col gap-4">
+                                            <div className="relative group">
+                                                <label className="text-xs font-semibold text-gray-500 uppercase mb-1.5 block ml-1">Date & Time</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="datetime-local"
+                                                        className="w-full pl-4 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-deep-blue outline-none transition-all font-medium text-gray-700"
+                                                        value={newMatch.match_date}
+                                                        onChange={(e) => setNewMatch({ ...newMatch, match_date: e.target.value })}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="relative group">
+                                                <label className="text-xs font-semibold text-gray-500 uppercase mb-1.5 block ml-1">Venue</label>
+                                                <div className="relative">
+                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                                        <FiMapPin />
+                                                    </div>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-deep-blue outline-none transition-all font-medium text-gray-700 placeholder-gray-400"
+                                                        placeholder="e.g. Wankhede Stadium"
+                                                        value={newMatch.venue}
+                                                        onChange={(e) => setNewMatch({ ...newMatch, venue: e.target.value })}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </FormSection>
                                 </div>
-                                <div className="pt-4 flex justify-end gap-3">
+
+                                <div className="mt-auto pt-6 border-t border-gray-100 flex justify-end gap-3">
                                     <button
                                         type="button"
                                         onClick={() => setShowCreateModal(false)}
-                                        className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="px-5 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors font-medium"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
-                                        className="px-6 py-2 bg-deep-blue text-white font-medium rounded-lg hover:bg-blue-900 transition-colors shadow-sm"
+                                        className="px-8 py-2.5 bg-gradient-to-r from-deep-blue to-blue-700 text-white font-bold rounded-xl hover:shadow-lg hover:scale-105 transition-all shadow-blue-200"
                                     >
-                                        Create Match
+                                        Schedule Match
                                     </button>
                                 </div>
                             </form>
@@ -640,5 +707,34 @@ const Fixtures = () => {
         </Layout>
     );
 };
+
+// Helper Components for Create Modal
+const FormSection = ({ title, children }) => (
+    <div className="mb-4">
+        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">{title}</h4>
+        {children}
+    </div>
+);
+
+const MatchTypeCard = ({ type, icon, selected, onClick, description }) => (
+    <div
+        onClick={onClick}
+        className={`relative flex flex-col items-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all ${selected
+            ? (type === 'Tournament' ? 'border-deep-blue bg-blue-50/50' : 'border-yellow-400 bg-yellow-50/50')
+            : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'
+            }`}
+    >
+        {selected && (
+            <div className={`absolute top-2 right-2 text-lg ${type === 'Tournament' ? 'text-deep-blue' : 'text-yellow-600'}`}>
+                <FiCheckCircle />
+            </div>
+        )}
+        <div className={`text-3xl ${selected ? (type === 'Tournament' ? 'text-deep-blue' : 'text-yellow-500') : 'text-gray-300'}`}>
+            {icon}
+        </div>
+        <span className={`font-bold ${selected ? 'text-gray-800' : 'text-gray-500'}`}>{type}</span>
+        <span className="text-[10px] text-gray-400 text-center font-medium">{description}</span>
+    </div>
+);
 
 export default Fixtures;

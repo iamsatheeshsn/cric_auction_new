@@ -9,7 +9,8 @@ exports.getPointsTable = async (req, res) => {
         const fixtures = await Fixture.findAll({
             where: {
                 auction_id: auctionId,
-                status: 'Completed'
+                status: 'Completed',
+                match_type: 'Tournament'
             }
         });
 

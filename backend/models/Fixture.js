@@ -40,6 +40,10 @@ module.exports = (sequelize) => {
             type: DataTypes.STRING,
             defaultValue: 'League' // 'League', 'QuarterFinal', 'SemiFinal', 'Final'
         },
+        match_type: {
+            type: DataTypes.ENUM('Tournament', 'Friendly'),
+            defaultValue: 'Tournament'
+        },
         // Match State
         current_innings: {
             type: DataTypes.INTEGER,

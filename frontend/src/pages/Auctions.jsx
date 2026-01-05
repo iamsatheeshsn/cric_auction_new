@@ -2,10 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiPlus, FiCalendar, FiMapPin, FiActivity, FiX, FiInfo, FiEdit, FiTrash2, FiCopy, FiAward } from 'react-icons/fi';
+import { FiPlus, FiCalendar, FiMapPin, FiActivity, FiX, FiInfo, FiEdit, FiTrash2, FiCopy, FiAward, FiUpload, FiImage, FiDollarSign, FiSettings } from 'react-icons/fi';
 import api from '../api/axios';
 import { toast } from 'react-toastify';
 import ConfirmationModal from '../components/ConfirmationModal';
+
+const FormSection = ({ title, children }) => (
+    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+        <h4 className="text-xs font-bold text-gray-400 uppercase mb-3 tracking-wider">{title}</h4>
+        {children}
+    </div>
+);
 
 const Auctions = () => {
     const [auctions, setAuctions] = useState([]);
@@ -22,8 +29,10 @@ const Auctions = () => {
         points_per_team: 100,
         min_bid: 100,
         bid_increase_by: 50,
+        bid_increase_by: 50,
         image: null
     });
+    const [previewImage, setPreviewImage] = useState(null);
 
     const [search, setSearch] = useState('');
 
@@ -47,7 +56,11 @@ const Auctions = () => {
     };
 
     const handleFileChange = (e) => {
-        setFormData(prev => ({ ...prev, image: e.target.files[0] }));
+        const file = e.target.files[0];
+        setFormData(prev => ({ ...prev, image: file }));
+        if (file) {
+            setPreviewImage(URL.createObjectURL(file));
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -89,8 +102,10 @@ const Auctions = () => {
             points_per_team: 100,
             min_bid: 100,
             bid_increase_by: 50,
+            bid_increase_by: 50,
             image: null
         });
+        setPreviewImage(null);
     };
 
     const handleEdit = (auction) => {
@@ -106,6 +121,11 @@ const Auctions = () => {
             bid_increase_by: auction.bid_increase_by,
             image: null // New image optional
         });
+        if (auction.image_path) {
+            setPreviewImage(`http://localhost:5000/${auction.image_path}`);
+        } else {
+            setPreviewImage(null);
+        }
         setShowModal(true);
     };
 
@@ -388,65 +408,127 @@ const Auctions = () => {
                 {showModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                         <motion.div
-                            initial={{ opacity: 0, y: 50 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 50 }}
-                            className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden"
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col"
                         >
-                            <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                                <h2 className="text-xl font-bold text-gray-800">{isEdit ? 'Edit Auction' : 'Create New Auction'}</h2>
-                                <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-red-500 transition-colors">
-                                    <FiX className="text-2xl" />
+                            <div className="bg-gradient-to-r from-deep-blue to-blue-800 px-8 py-5 flex justify-between items-center shrink-0">
+                                <div>
+                                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                        {isEdit ? <FiEdit /> : <FiPlus />} {isEdit ? 'Edit Auction' : 'Create New Auction'}
+                                    </h2>
+                                    <p className="text-blue-200 text-sm mt-0.5">Setup the basic details and rules for your auction.</p>
+                                </div>
+                                <button onClick={() => setShowModal(false)} className="text-blue-200 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors">
+                                    <FiX className="text-xl" />
                                 </button>
                             </div>
 
-                            <form onSubmit={handleSubmit} className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="md:col-span-2">
-                                    <label className="label">Auction Name *</label>
-                                    <input required name="name" value={formData.name} onChange={handleInputChange} className="input-field" placeholder="e.g. IPL 2025 Mega Auction" />
-                                </div>
+                            <form onSubmit={handleSubmit} className="p-8 flex flex-col gap-6">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-                                <div>
-                                    <label className="label">Auction Date *</label>
-                                    <input required type="date" name="auction_date" value={formData.auction_date} onChange={handleInputChange} className="input-field" />
-                                </div>
-
-                                <div>
-                                    <label className="label">Place *</label>
-                                    <input required name="place" value={formData.place} onChange={handleInputChange} className="input-field" placeholder="e.g. Mumbai" />
-                                </div>
-
-                                <div>
-                                    <label className="label">Points Per Team *</label>
-                                    <input required type="number" name="points_per_team" value={formData.points_per_team} onChange={handleInputChange} className="input-field" />
-                                </div>
-                                <div className="flex gap-4">
-                                    <div className="flex-1">
-                                        <label className="label">Min Bid</label>
-                                        <input required type="number" name="min_bid" value={formData.min_bid} onChange={handleInputChange} className="input-field" />
+                                    {/* Left Column: General Info */}
+                                    <div className="space-y-6">
+                                        <FormSection title="General Information">
+                                            <div className="space-y-5">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Auction Name *</label>
+                                                    <input required name="name" value={formData.name} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800" placeholder="e.g. IPL 2025 Mega Auction" />
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Date *</label>
+                                                        <div className="relative">
+                                                            <FiCalendar className="absolute left-3 top-3 text-gray-400" />
+                                                            <input required type="date" name="auction_date" value={formData.auction_date} onChange={handleInputChange} className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800" />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Location *</label>
+                                                        <div className="relative">
+                                                            <FiMapPin className="absolute left-3 top-3 text-gray-400" />
+                                                            <input required name="place" value={formData.place} onChange={handleInputChange} className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800" placeholder="e.g. Mumbai" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Sport Type</label>
+                                                    <select name="type" value={formData.type} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800">
+                                                        <option value="Cricket">Cricket</option>
+                                                        <option value="Football">Football</option>
+                                                        <option value="Kabaddi">Kabaddi</option>
+                                                        <option value="Volleyball">Volleyball</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </FormSection>
                                     </div>
-                                    <div className="flex-1">
-                                        <label className="label">Bid Incr.</label>
-                                        <input required type="number" name="bid_increase_by" value={formData.bid_increase_by} onChange={handleInputChange} className="input-field" />
+
+                                    {/* Right Column: Rules & Image */}
+                                    <div className="space-y-6 flex flex-col h-full">
+                                        <FormSection title="Bidding Rules">
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Points/Team</label>
+                                                    <div className="relative">
+                                                        <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-xs">Pts</span>
+                                                        <input required type="number" name="points_per_team" value={formData.points_per_team} onChange={handleInputChange} className="w-full pl-9 pr-2 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800" />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Min Bid</label>
+                                                    <div className="relative">
+                                                        <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-xs">₹</span>
+                                                        <input required type="number" name="min_bid" value={formData.min_bid} onChange={handleInputChange} className="w-full pl-6 pr-2 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800" />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Incr.</label>
+                                                    <div className="relative">
+                                                        <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-xs">+</span>
+                                                        <input required type="number" name="bid_increase_by" value={formData.bid_increase_by} onChange={handleInputChange} className="w-full pl-6 pr-2 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </FormSection>
+
+                                        <div className="flex-1 border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer hover:border-deep-blue hover:bg-blue-50 transition-all relative group bg-gray-50 overflow-hidden min-h-[200px]">
+                                            <input type="file" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                            {previewImage ? (
+                                                <>
+                                                    <img src={previewImage} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" />
+                                                    <div className="w-12 h-12 bg-white/80 backdrop-blur-sm rounded-full shadow-sm flex items-center justify-center mb-2 group-hover:scale-110 transition-transform relative z-20">
+                                                        <FiEdit className="text-2xl text-deep-blue" />
+                                                    </div>
+                                                    <span className="text-xs text-gray-800 font-bold relative z-20 bg-white/80 px-2 py-0.5 rounded-full">Change Banner</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform relative z-20">
+                                                        <FiImage size={24} className="text-deep-blue" />
+                                                    </div>
+                                                    <p className="text-sm font-medium text-gray-700 relative z-20">Upload Auction Banner</p>
+                                                    <p className="text-xs text-gray-400 mt-1 relative z-20">PNG, JPG up to 5MB</p>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="label">Type</label>
-                                    <select name="type" value={formData.type} onChange={handleInputChange} className="input-field">
-                                        <option value="Cricket">Cricket</option>
-                                        <option value="Football">Football</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="label">Auction Image</label>
-                                    <input type="file" onChange={handleFileChange} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all" />
-                                </div>
-
-                                <div className="md:col-span-2 pt-4 flex justify-end gap-3">
-                                    <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
-                                    <button type="submit" className="px-6 py-2 bg-deep-blue text-white rounded-lg hover:shadow-lg hover:bg-blue-900 transition-all">
+                                <div className="pt-2 border-t border-gray-100 flex justify-end gap-3 mt-auto">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowModal(false)}
+                                        className="px-6 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors font-medium"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-8 py-2.5 bg-gradient-to-r from-deep-blue to-blue-700 text-white font-bold rounded-xl hover:shadow-lg hover:scale-105 transition-all shadow-blue-200 flex items-center gap-2"
+                                    >
+                                        {isEdit ? <FiEdit /> : <FiPlus />}
                                         {isEdit ? 'Update Auction' : 'Create Auction'}
                                     </button>
                                 </div>
@@ -467,60 +549,82 @@ const Auctions = () => {
             {/* Import Data Modal */}
             <AnimatePresence>
                 {importModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+                            className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden"
                         >
-                            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                                <h2 className="text-lg font-bold text-gray-800">Import Data</h2>
-                                <button onClick={() => setImportModalOpen(false)} className="text-gray-400 hover:text-red-500">
+                            <div className="bg-gradient-to-r from-gray-900 to-gray-800 px-6 py-4 flex justify-between items-center">
+                                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                    <div className="p-1.5 bg-white/10 rounded-lg"><FiCopy /></div>
+                                    Import Auction Data
+                                </h2>
+                                <button onClick={() => setImportModalOpen(false)} className="text-gray-400 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-lg">
                                     <FiX className="text-xl" />
                                 </button>
                             </div>
-                            <form onSubmit={handleImportSubmit} className="p-6">
-                                <div className="mb-4">
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Source Auction</label>
-                                    <select
-                                        required
-                                        value={importSourceId}
-                                        onChange={(e) => setImportSourceId(e.target.value)}
-                                        className="w-full px-4 py-2 border rounded-lg focus:border-deep-blue focus:outline-none"
+                            <form onSubmit={handleImportSubmit} className="p-8">
+                                <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl mb-6">
+                                    <p className="text-sm text-blue-900 mb-1 font-semibold flex items-center gap-2"><FiInfo /> Note</p>
+                                    <p className="text-xs text-blue-700">This will copy teams and players from a previous auction to this one. Existing data in this auction will be preserved, duplicates will be skipped.</p>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Step 1: Source Auction</label>
+                                        <select
+                                            required
+                                            value={importSourceId}
+                                            onChange={(e) => setImportSourceId(e.target.value)}
+                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800"
+                                        >
+                                            <option value="">Select an auction to copy from...</option>
+                                            {auctions.filter(a => a.id !== importTargetId).map(a => (
+                                                <option key={a.id} value={a.id}>{a.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Step 2: Compare & Select Data</label>
+                                        <div className="grid grid-cols-2 gap-4 h-[50px]">
+                                            <label className={`flex items-center justify-center gap-3 px-4 py-2 rounded-xl border cursor-pointer transition-all h-full ${importOptions.teams ? 'border-deep-blue bg-blue-50/50 shadow-sm' : 'border-gray-200 hover:border-gray-300'}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={importOptions.teams}
+                                                    onChange={(e) => setImportOptions({ ...importOptions, teams: e.target.checked })}
+                                                    className="w-5 h-5 text-deep-blue rounded focus:ring-deep-blue accent-deep-blue"
+                                                />
+                                                <span className="text-sm font-bold text-gray-700">Teams</span>
+                                            </label>
+                                            <label className={`flex items-center justify-center gap-3 px-4 py-2 rounded-xl border cursor-pointer transition-all h-full ${importOptions.players ? 'border-deep-blue bg-blue-50/50 shadow-sm' : 'border-gray-200 hover:border-gray-300'}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={importOptions.players}
+                                                    onChange={(e) => setImportOptions({ ...importOptions, players: e.target.checked })}
+                                                    className="w-5 h-5 text-deep-blue rounded focus:ring-deep-blue accent-deep-blue"
+                                                />
+                                                <span className="text-sm font-bold text-gray-700">Players</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                                    <button
+                                        type="button"
+                                        onClick={() => setImportModalOpen(false)}
+                                        className="px-6 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors text-sm font-medium"
                                     >
-                                        <option value="">Select Source Auction</option>
-                                        {auctions.filter(a => a.id !== importTargetId).map(a => (
-                                            <option key={a.id} value={a.id}>{a.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="mb-6 space-y-3">
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={importOptions.teams}
-                                            onChange={(e) => setImportOptions({ ...importOptions, teams: e.target.checked })}
-                                            className="w-4 h-4 text-deep-blue rounded focus:ring-deep-blue"
-                                        />
-                                        <span className="text-gray-700">Import Teams</span>
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={importOptions.players}
-                                            onChange={(e) => setImportOptions({ ...importOptions, players: e.target.checked })}
-                                            className="w-4 h-4 text-deep-blue rounded focus:ring-deep-blue"
-                                        />
-                                        <span className="text-gray-700">Import Players</span>
-                                    </label>
-                                </div>
-
-                                <div className="flex justify-end gap-3">
-                                    <button type="button" onClick={() => setImportModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
-                                    <button type="submit" className="px-4 py-2 bg-deep-blue text-white rounded-lg hover:bg-blue-900 shadow-md">
-                                        Start Import
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-8 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-black transition-colors shadow-lg shadow-gray-200 text-sm font-bold flex items-center gap-2"
+                                    >
+                                        <FiCopy /> Start Import
                                     </button>
                                 </div>
                             </form>

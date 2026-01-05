@@ -52,7 +52,8 @@ exports.generateFixtures = async (req, res) => {
                         match_order: (round * matchesPerRound) + match + 1,
                         status: 'Scheduled',
                         venue: defaultVenue,
-                        match_date: match_date || null // Use provided date or null
+                        match_date: match_date || null, // Use provided date or null
+                        match_type: 'Tournament'
                     });
                 }
             }
@@ -73,7 +74,7 @@ exports.generateFixtures = async (req, res) => {
 
 exports.createFixture = async (req, res) => {
     try {
-        const { auctionId, team1_id, team2_id, match_date, venue } = req.body;
+        const { auctionId, team1_id, team2_id, match_date, venue, match_type } = req.body;
 
         if (!auctionId || !team1_id || !team2_id) {
             return res.status(400).json({ message: "Auction ID and both Team IDs are required" });
@@ -93,7 +94,8 @@ exports.createFixture = async (req, res) => {
             match_date,
             venue,
             match_order: maxOrder + 1,
-            status: 'Scheduled'
+            status: 'Scheduled',
+            match_type: match_type || 'Tournament'
         });
 
         res.status(201).json(fixture);

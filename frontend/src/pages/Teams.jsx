@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiPlus, FiUsers, FiX, FiArrowLeft, FiEdit, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiUsers, FiX, FiArrowLeft, FiEdit, FiTrash2, FiImage, FiHash } from 'react-icons/fi';
 import api from '../api/axios';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import ConfirmationModal from '../components/ConfirmationModal';
 
 import PlayerInfoModal from '../components/PlayerInfoModal';
+
+const FormSection = ({ title, children }) => (
+    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+        <h4 className="text-xs font-bold text-gray-400 uppercase mb-3 tracking-wider">{title}</h4>
+        {children}
+    </div>
+);
 
 const Teams = () => {
     const { auctionId } = useParams();
@@ -30,6 +37,7 @@ const Teams = () => {
         purse_remaining: 0, // Added to track update
         image: null
     });
+    const [previewImage, setPreviewImage] = useState(null);
 
     const [search, setSearch] = useState('');
 
@@ -63,7 +71,11 @@ const Teams = () => {
     };
 
     const handleFileChange = (e) => {
-        setFormData(prev => ({ ...prev, image: e.target.files[0] }));
+        const file = e.target.files[0];
+        setFormData(prev => ({ ...prev, image: file }));
+        if (file) {
+            setPreviewImage(URL.createObjectURL(file));
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -105,6 +117,7 @@ const Teams = () => {
             purse_remaining: 0,
             image: null
         });
+        setPreviewImage(null);
     };
 
     const handleEdit = (team) => {
@@ -117,6 +130,11 @@ const Teams = () => {
             purse_remaining: team.purse_remaining,
             image: null
         });
+        if (team.image_path) {
+            setPreviewImage(`http://localhost:5000/${team.image_path}`);
+        } else {
+            setPreviewImage(null);
+        }
         setShowModal(true);
     };
 
@@ -364,45 +382,93 @@ const Teams = () => {
             {/* Create Team Modal */}
             <AnimatePresence>
                 {showModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                         <motion.div
-                            initial={{ opacity: 0, y: 50 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 50 }}
-                            className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden"
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col"
                         >
-                            <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                                <h2 className="text-xl font-bold text-gray-800">{isEdit ? 'Edit Team' : 'Add New Team'}</h2>
-                                <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-red-500 transition-colors">
-                                    <FiX className="text-2xl" />
+                            <div className="bg-gradient-to-r from-deep-blue to-blue-800 px-6 py-4 flex justify-between items-center shrink-0">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                        {isEdit ? <FiEdit /> : <FiPlus />} {isEdit ? 'Edit Team' : 'Add New Team'}
+                                    </h2>
+                                    <p className="text-blue-200 text-xs mt-0.5">Manage team details and allocation.</p>
+                                </div>
+                                <button onClick={() => setShowModal(false)} className="text-blue-200 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors">
+                                    <FiX className="text-xl" />
                                 </button>
                             </div>
 
-                            <form onSubmit={handleSubmit} className="p-8 space-y-4">
-                                <div>
-                                    <label className="label">Team Name *</label>
-                                    <input required name="name" value={formData.name} onChange={handleInputChange} className="input-field" placeholder="e.g. Chennai Super Kings" />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
+                            <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Left Column: Team Details */}
                                     <div>
-                                        <label className="label">Team Short Name *</label>
-                                        <input required name="short_name" value={formData.short_name} onChange={handleInputChange} className="input-field" placeholder="e.g. CSK" />
+                                        <FormSection title="Team Identity">
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Team Name *</label>
+                                                    <input required name="name" value={formData.name} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800" placeholder="e.g. Chennai Super Kings" />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Short Name *</label>
+                                                        <div className="relative">
+                                                            <FiHash className="absolute left-3 top-3 text-gray-400" />
+                                                            <input required name="short_name" value={formData.short_name} onChange={handleInputChange} className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800" placeholder="e.g. CSK" />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Squad Size *</label>
+                                                        <div className="relative">
+                                                            <FiUsers className="absolute left-3 top-3 text-gray-400" />
+                                                            <input required type="number" name="players_per_team" value={formData.players_per_team} onChange={handleInputChange} className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </FormSection>
                                     </div>
-                                    <div>
-                                        <label className="label">Players Per Team *</label>
-                                        <input required type="number" name="players_per_team" value={formData.players_per_team} onChange={handleInputChange} className="input-field" />
+
+                                    {/* Right Column: Image Upload */}
+                                    <div className="flex flex-col h-full">
+                                        <div className="flex-1 border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer hover:border-deep-blue hover:bg-blue-50 transition-all relative group bg-gray-50 overflow-hidden min-h-[200px]">
+                                            <input required={!isEdit && !previewImage} type="file" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                            {previewImage ? (
+                                                <>
+                                                    <img src={previewImage} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" />
+                                                    <div className="w-12 h-12 bg-white/80 backdrop-blur-sm rounded-full shadow-sm flex items-center justify-center mb-2 group-hover:scale-110 transition-transform relative z-20">
+                                                        <FiEdit className="text-2xl text-deep-blue" />
+                                                    </div>
+                                                    <span className="text-xs text-gray-800 font-bold relative z-20 bg-white/80 px-2 py-0.5 rounded-full">Change Logo</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform relative z-20">
+                                                        <FiUsers size={24} className="text-deep-blue" />
+                                                    </div>
+                                                    <p className="text-sm font-medium text-gray-700 relative z-20">Upload Team Logo</p>
+                                                    <p className="text-xs text-gray-400 mt-1 relative z-20">PNG, JPG up to 5MB</p>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="label">Team Image *</label>
-                                    <input required={!isEdit} type="file" onChange={handleFileChange} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all" />
-                                </div>
-
-                                <div className="pt-4 flex justify-end gap-3">
-                                    <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
-                                    <button type="submit" className="px-6 py-2 bg-deep-blue text-white rounded-lg hover:shadow-lg hover:bg-blue-900 transition-all">
+                                <div className="pt-2 border-t border-gray-100 flex justify-end gap-3 mt-auto">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowModal(false)}
+                                        className="px-6 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors font-medium text-sm"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-6 py-2 bg-gradient-to-r from-deep-blue to-blue-700 text-white font-bold rounded-lg hover:shadow-lg hover:scale-105 transition-all shadow-blue-200 flex items-center gap-2 text-sm"
+                                    >
+                                        {isEdit ? <FiEdit /> : <FiPlus />}
                                         {isEdit ? 'Update Team' : 'Add Team'}
                                     </button>
                                 </div>
