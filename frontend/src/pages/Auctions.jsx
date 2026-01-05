@@ -29,7 +29,6 @@ const Auctions = () => {
         points_per_team: 100,
         min_bid: 100,
         bid_increase_by: 50,
-        bid_increase_by: 50,
         image: null
     });
     const [previewImage, setPreviewImage] = useState(null);
@@ -101,7 +100,6 @@ const Auctions = () => {
             type: 'Cricket',
             points_per_team: 100,
             min_bid: 100,
-            bid_increase_by: 50,
             bid_increase_by: 50,
             image: null
         });

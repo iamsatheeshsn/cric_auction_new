@@ -1,5 +1,6 @@
 const { Fixture, ScoreBall, Player, Team, AuctionPlayer } = require('../models');
 const { Op } = require('sequelize');
+const commentaryService = require('../services/commentaryService');
 
 // Get Match Scoring State
 exports.getMatchScoringDetails = async (req, res) => {
@@ -415,13 +416,83 @@ exports.recordBall = async (req, res) => {
             commentary
         } = req.body;
 
+        // --- GENERATIVE AI COMMENTARY INTEGRATION ---
+        let finalCommentary = commentary;
+        if (!finalCommentary) {
+            // Fetch Names for Context
+            const striker = await Player.findByPk(striker_id);
+            const bowler = await Player.findByPk(bowler_id);
+
+            const context = {
+                strikerName: striker ? striker.name : 'Batman',
+                bowlerName: bowler ? bowler.name : 'Bowler'
+            };
+
+            finalCommentary = commentaryService.generateCommentary({
+                runs_scored, extras, extra_type, is_wicket, wicket_type
+            }, context);
+        }
+
+        // Check for End of Over (Simplistic: 6 legal balls)
+        // Note: ball_number passed from frontend is usually legal ball count in over (1-6)
+        // If ball_number is 6 and it's a legal ball, assume end of over.
+        // OR calculate if over is done.
+        // A robust way:
+        const isLegal = (extra_type !== 'Wide' && extra_type !== 'NoBall');
+        if (ball_number === 6 && isLegal) {
+            // Calculate Over Summary
+            // We need current score.
+            // Quick aggregate for this innings to get total score/wickets
+            // This adds a DB call but ensures accuracy.
+            const ballRuns = runs_scored + extras;
+            const ballWicket = is_wicket ? 1 : 0;
+
+            // Get previous balls in this innings to sum up?
+            // Actually, the `balls` query in getMatchScoringDetails does this.
+            // Optimisation: Just sum up in memory if we trust frontend, but safely:
+            // Let's do a quick count.
+            const balls = await ScoreBall.findAll({
+                where: { fixture_id: fixtureId, innings }
+            });
+
+            let totalRuns = 0;
+            let totalWickets = 0;
+            let overRuns = ballRuns; // Runs in this over
+            let overWickets = ballWicket;
+
+            // balls contains PREVIOUS balls (before this insert).
+            balls.forEach(b => {
+                totalRuns += b.runs_scored + b.extras;
+                if (b.is_wicket) totalWickets++;
+                if (b.over_number === over_number) {
+                    overRuns += b.runs_scored + b.extras;
+                    if (b.is_wicket) overWickets++;
+                }
+            });
+
+            // Add current ball (not in DB yet)
+            totalRuns += ballRuns;
+            totalWickets += ballWicket;
+
+            const summary = commentaryService.generateOverSummary({
+                over_number,
+                runs: overRuns,
+                wickets: overWickets,
+                total_score: totalRuns,
+                wickets_down: totalWickets
+            });
+
+            finalCommentary += ` | ${summary}`;
+        }
+        // --------------------------------------------
+
         const newBall = await ScoreBall.create({
             fixture_id: fixtureId,
             innings, over_number, ball_number,
             striker_id, non_striker_id, bowler_id,
             runs_scored, extras, extra_type,
             is_wicket, wicket_type, player_out_id, fielder_id,
-            commentary
+            commentary: finalCommentary
         });
 
         res.status(201).json(newBall);

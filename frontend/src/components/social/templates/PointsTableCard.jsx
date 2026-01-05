@@ -11,7 +11,8 @@ const PointsTableCard = ({ data }) => {
             { pos: 3, team: "SRH", p: 7, w: 5, l: 2, pts: 10, nrr: "+0.914" },
             { pos: 4, team: "CSK", p: 7, w: 4, l: 3, pts: 8, nrr: "+0.529" },
             { pos: 5, team: "LSG", p: 8, w: 4, l: 4, pts: 8, nrr: "+0.123" },
-        ]
+        ],
+        showQualifiers = false // Default to false to avoid showing Qs prematurely
     } = data || {};
 
     return (
@@ -51,29 +52,38 @@ const PointsTableCard = ({ data }) => {
 
                     {/* Table Body */}
                     <div className="flex-1 flex flex-col justify-center gap-3 px-4 py-4">
-                        {standings.map((team, index) => (
-                            <div key={index}
-                                className={`grid grid-cols-12 items-center py-4 px-6 rounded-xl border border-white/5 bg-white/5 flex-shrink-0 min-h-[100px] ${index < 4 ? 'ring-1 ring-blue-500/30 bg-gradient-to-r from-blue-500/10 to-transparent' : ''}`}
-                            >
-                                <div className="col-span-1 flex justify-center">
-                                    <span className={`w-12 h-12 flex items-center justify-center rounded-full font-black text-2xl ${index < 4 ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'bg-white/10 text-gray-400'}`}>
-                                        {team.pos || index + 1}
-                                    </span>
+                        {standings.map((team, index) => {
+                            const isQualifying = showQualifiers && index < 4;
+                            return (
+                                <div key={index}
+                                    className={`grid grid-cols-12 items-center py-4 px-6 rounded-xl border border-white/5 bg-white/5 flex-shrink-0 min-h-[100px] ${isQualifying ? 'ring-1 ring-blue-500/30 bg-gradient-to-r from-blue-500/10 to-transparent' : ''}`}
+                                >
+                                    <div className="col-span-1 flex justify-center">
+                                        <span className={`w-12 h-12 flex items-center justify-center rounded-full font-black text-2xl ${isQualifying ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'bg-white/10 text-gray-400'}`}>
+                                            {team.pos || index + 1}
+                                        </span>
+                                    </div>
+                                    <div className="col-span-4 pl-4 flex items-center gap-4 min-w-0">
+                                        {/* Logo */}
+                                        <div className="w-12 h-12 bg-white/10 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden border border-white/20">
+                                            {team.logo ? (
+                                                <img src={`http://localhost:5000/${team.logo}`} alt="" className="w-full h-full object-cover" crossOrigin="anonymous" />
+                                            ) : (
+                                                <span className="text-xs uppercase font-bold text-gray-500">Logo</span>
+                                            )}
+                                        </div>
+                                        <span className="text-2xl font-bold uppercase tracking-tight leading-tight block w-full break-words" title={team.team}>{team.team}</span>
+                                    </div>
+                                    <div className="col-span-1 text-center text-3xl font-bold text-gray-300">{team.p}</div>
+                                    <div className="col-span-1 text-center text-3xl font-bold text-green-400">{team.w}</div>
+                                    <div className="col-span-1 text-center text-3xl font-bold text-red-400">{team.l}</div>
+                                    <div className="col-span-2 text-center">
+                                        <span className="text-4xl font-black text-white bg-white/10 px-4 py-1 rounded-lg shadow-inner">{team.pts}</span>
+                                    </div>
+                                    <div className="col-span-2 text-right text-2xl font-mono text-gray-300">{team.nrr}</div>
                                 </div>
-                                <div className="col-span-4 pl-4 flex items-center gap-4 min-w-0">
-                                    {/* Placeholder Icon if needed */}
-                                    <div className="w-12 h-12 bg-white/10 rounded-full flex-shrink-0 flex items-center justify-center text-xs uppercase font-bold text-gray-500">Logo</div>
-                                    <span className="text-3xl font-bold uppercase tracking-tight truncate whitespace-nowrap text-slate-100 pb-2 pt-1 block leading-normal w-full" title={team.team}>{team.team}</span>
-                                </div>
-                                <div className="col-span-1 text-center text-3xl font-bold text-gray-300">{team.p}</div>
-                                <div className="col-span-1 text-center text-3xl font-bold text-green-400">{team.w}</div>
-                                <div className="col-span-1 text-center text-3xl font-bold text-red-400">{team.l}</div>
-                                <div className="col-span-2 text-center">
-                                    <span className="text-4xl font-black text-white bg-white/10 px-4 py-1 rounded-lg shadow-inner">{team.pts}</span>
-                                </div>
-                                <div className="col-span-2 text-right text-2xl font-mono text-gray-300">{team.nrr}</div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             </div>

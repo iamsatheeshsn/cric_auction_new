@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiArrowLeft, FiRefreshCw, FiPrinter, FiTrash2, FiCalendar, FiMapPin, FiPlus, FiX, FiEdit, FiSearch, FiChevronLeft, FiChevronRight, FiActivity, FiUsers, FiShield, FiAward, FiStar, FiCheckCircle } from 'react-icons/fi';
+import { FiArrowLeft, FiRefreshCw, FiPrinter, FiTrash2, FiCalendar, FiMapPin, FiPlus, FiX, FiEdit, FiSearch, FiChevronLeft, FiChevronRight, FiActivity, FiUsers, FiShield, FiAward, FiStar, FiCheckCircle, FiShare2 } from 'react-icons/fi';
+import ShareCardModal from '../components/social/ShareCardModal';
+import MatchSummaryCard from '../components/social/templates/MatchSummaryCard';
 import api from '../api/axios';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -93,12 +95,54 @@ const Fixtures = () => {
         }
     };
 
-    // Generate Modal State
     const [showGenerateModal, setShowGenerateModal] = useState(false);
     const [generateConfig, setGenerateConfig] = useState({
         match_date: '',
         venue: ''
     });
+
+    // Share Modal State
+    const [shareModalOpen, setShareModalOpen] = useState(false);
+    const [shareMatchData, setShareMatchData] = useState(null);
+
+    const handleShareClick = (match) => {
+        // Construct Summary Data
+        const team1 = match.Team1;
+        const team2 = match.Team2;
+        const isTeam1Win = match.winning_team_id === team1.id;
+
+        // MVP (Mocked or Real if we had it fully)
+        // Accessing result from `result_description` mostly.
+        // And scores need to be passed or parsed.
+        // Assuming match has team1_runs, team1_wickets, etc. if from `simulateMatch`.
+        // Let's rely on standard fields.
+
+        const data = {
+            matchTitle: `Match #${match.match_order} - ${auction?.name || 'Tournament'}`,
+            date: new Date(match.match_date).toDateString(),
+            team1: {
+                name: team1.sort_name || team1.name,
+                score: match.team1_runs || 0,
+                wickets: match.team1_wickets || 0,
+                overs: match.team1_overs || 0
+            },
+            team2: {
+                name: team2.sort_name || team2.name,
+                score: match.team2_runs || 0,
+                wickets: match.team2_wickets || 0,
+                overs: match.team2_overs || 0
+            },
+            result: match.result_description || 'Match Completed',
+            mvp: {
+                name: "TBD",
+                stats: "Player of the Match"
+            } // MVP is not fully in generic fixture object list, ignoring for now or fetching details?
+            // Ideally we fetch details. But for now let's show placeholder or "TBD"
+        };
+
+        setShareMatchData(data);
+        setShareModalOpen(true);
+    };
 
     const handleGenerate = () => {
         // Set defaults
@@ -305,6 +349,17 @@ const Fixtures = () => {
                                         )}
                                     </div>
                                     <div className="flex gap-2 items-center">
+                                        {/* Share Button for Completed Matches */}
+                                        {match.status === 'Completed' && (
+                                            <button
+                                                onClick={() => handleShareClick(match)}
+                                                className="text-purple-500 hover:text-purple-700 bg-purple-50 p-1.5 rounded-full transition-colors"
+                                                title="Share Match Result"
+                                            >
+                                                <FiShare2 size={14} />
+                                            </button>
+                                        )}
+
                                         <button
                                             onClick={() => handleEditClick(match)}
                                             disabled={match.status === 'Completed' || match.status === 'Live'}
@@ -704,6 +759,15 @@ const Fixtures = () => {
                 confirmText={modalAction === 'generate' ? "Yes, Generate" : "Yes, Delete"}
                 confirmButtonClass={modalAction === 'generate' ? "bg-deep-blue hover:bg-blue-900" : "bg-red-600 hover:bg-red-700"}
             />
+
+            {/* Share Modal */}
+            <ShareCardModal
+                isOpen={shareModalOpen}
+                onClose={() => setShareModalOpen(false)}
+                title="Share Match Result"
+            >
+                <MatchSummaryCard data={shareMatchData} />
+            </ShareCardModal>
         </Layout>
     );
 };
