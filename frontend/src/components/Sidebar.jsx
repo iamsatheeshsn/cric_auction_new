@@ -5,7 +5,7 @@ import { FaTools } from 'react-icons/fa';
 import { useTheme } from '../context/ThemeContext';
 import Logo from './Logo';
 
-const Sidebar = ({ isOpen, onClose }) => {
+const Sidebar = ({ isOpen, onClose, showTicker, toggleTicker }) => {
     const location = useLocation();
     const navigate = useNavigate();
     const { theme, toggleTheme } = useTheme();
@@ -172,6 +172,13 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 >
                                     {theme === 'dark' ? <FiSun className="text-lg text-yellow-400" /> : <FiMoon className="text-lg" />}
                                     <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+                                </button>
+                                <button
+                                    onClick={toggleTicker}
+                                    className="flex items-center gap-4 w-full px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+                                >
+                                    <FiActivity className={`text-lg transition-colors ${showTicker ? 'text-green-400' : 'text-gray-500'}`} />
+                                    <span>{showTicker ? 'Hide Live Ticker' : 'Show Live Ticker'}</span>
                                 </button>
                             </div>
                         )}

@@ -9,7 +9,7 @@ router.post('/copy-data', auctionController.copyAuctionData);
 router.get('/', auctionController.getAllAuctions);
 
 // Get Single
-// Get Single
+router.get('/ticker/recent-sales', auctionController.getTickerData);
 router.get('/:id/live', auctionController.getLiveAuctionData);
 router.get('/:id', auctionController.getAuctionById);
 

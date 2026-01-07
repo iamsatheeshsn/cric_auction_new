@@ -3,6 +3,7 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import NotificationBell from './NotificationBell';
 import { FiMenu } from 'react-icons/fi';
+import Ticker from './Ticker';
 
 const Layout = ({ children }) => {
     const location = useLocation();
@@ -18,10 +19,25 @@ const Layout = ({ children }) => {
         { path: '/profile', label: 'My Profile' },
     ];
 
+    const [showTicker, setShowTicker] = useState(() => {
+        return localStorage.getItem('showTicker') !== 'false';
+    });
+
+    const toggleTicker = () => {
+        const newState = !showTicker;
+        setShowTicker(newState);
+        localStorage.setItem('showTicker', newState);
+    };
+
     return (
         <div className="flex h-screen bg-slate-100 dark:bg-slate-900 print:bg-white print:h-auto transition-colors duration-300">
             {/* Sidebar */}
-            <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+            <Sidebar
+                isOpen={isSidebarOpen}
+                onClose={() => setIsSidebarOpen(false)}
+                showTicker={showTicker}
+                toggleTicker={toggleTicker}
+            />
 
             {/* Main Content */}
             <div className="flex-1 overflow-auto print:overflow-visible print:h-auto w-full">
@@ -55,9 +71,10 @@ const Layout = ({ children }) => {
                         </Link>
                     </div>
                 </header>
-                <main className="p-4 md:p-8">
+                <main className={`p-4 md:p-8 ${showTicker ? 'pb-16' : ''}`}>
                     {children}
                 </main>
+                {showTicker && <Ticker onClose={toggleTicker} />}
             </div>
         </div>
     );

@@ -405,3 +405,50 @@ exports.updateLiveBid = async (req, res) => {
         res.status(500).json({ message: 'Error updating live bid' });
     }
 };
+
+// Get Ticker Data (Recent Sales for Live Auctions)
+exports.getTickerData = async (req, res) => {
+    try {
+        // Find all LIVE auctions
+        const liveAuctions = await Auction.findAll({
+            where: { status: 'Live' },
+            attributes: ['id', 'name']
+        });
+
+        if (liveAuctions.length === 0) {
+            return res.json([]);
+        }
+
+        const auctionIds = liveAuctions.map(a => a.id);
+
+        // Fetch Recent Sold Players for these auctions
+        const recentSales = await AuctionPlayer.findAll({
+            where: {
+                auction_id: { [Op.in]: auctionIds },
+                status: 'Sold'
+            },
+            include: [
+                { model: Player, attributes: ['name'] },
+                { model: Team, attributes: ['name', 'short_name'] },
+                { model: Auction, attributes: ['name'] }
+            ],
+            order: [['updatedAt', 'DESC']],
+            limit: 10
+        });
+
+        // Format for frontend
+        const tickerItems = recentSales.map(sale => ({
+            id: sale.id,
+            playerName: sale.Player?.name || 'Unknown',
+            teamName: sale.Team?.name || 'Unknown Team',
+            teamShortName: sale.Team?.short_name,
+            price: sale.sold_price,
+            auctionName: sale.Auction?.name
+        }));
+
+        res.json(tickerItems);
+    } catch (error) {
+        console.error("Ticker Error:", error);
+        res.status(500).json({ message: "Failed to fetch ticker data" });
+    }
+};
