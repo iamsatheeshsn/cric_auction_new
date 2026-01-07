@@ -1,5 +1,7 @@
 const { Auction, Team, Player, AuctionPlayer, Bid } = require('../models');
 const { Op } = require('sequelize');
+const { createNotification } = require('./notificationController');
+const { logActivity } = require('../utils/activityLogger');
 
 // Create Auction
 exports.createAuction = async (req, res) => {
@@ -7,9 +9,9 @@ exports.createAuction = async (req, res) => {
         console.log("Create Auction Body:", req.body);
         console.log("Create Auction File:", req.file);
 
-        // Using Multer for file upload, so file path will be in req.file.path
-        // In a real app we might want to store relative path or upload to cloud
-        const imagePath = req.file ? req.file.path : null;
+        // Using Multer
+        // Normalize path to use forward slashes for URL compatibility
+        const imagePath = req.file ? `uploads/${req.file.filename}` : null;
 
         const {
             name,
@@ -32,6 +34,14 @@ exports.createAuction = async (req, res) => {
             image_path: imagePath
         });
 
+        const io = req.app.get('io');
+        await createNotification(null, 'INFO', `New Auction Created: ${newAuction.name}`, `/auctions`, io);
+
+        // Log Activity
+        if (req.body.userId) {
+            await logActivity(req.body.userId, "Created Auction", `Created auction '${name}'`, 'Auction', newAuction.id);
+        }
+
         res.status(201).json(newAuction);
     } catch (error) {
         console.error("Error creating auction:", error);
@@ -44,7 +54,7 @@ exports.updateAuction = async (req, res) => {
     try {
         const { id } = req.params;
         const { name, auction_date, place, type, points_per_team, min_bid, bid_increase_by } = req.body;
-        const imagePath = req.file ? req.file.path : undefined;
+        const imagePath = req.file ? `uploads/${req.file.filename}` : undefined;
 
         const auction = await Auction.findByPk(id);
         if (!auction) return res.status(404).json({ message: 'Auction not found' });
@@ -60,6 +70,10 @@ exports.updateAuction = async (req, res) => {
         if (imagePath) auction.image_path = imagePath;
 
         await auction.save();
+
+        const io = req.app.get('io');
+        await createNotification(null, 'INFO', `Auction Updated: ${auction.name}`, `/auctions`, io);
+
         res.json(auction);
     } catch (error) {
         res.status(500).json({ message: 'Error updating auction', error: error.message });
@@ -119,6 +133,10 @@ exports.deleteAuction = async (req, res) => {
         if (!auction) return res.status(404).json({ message: 'Auction not found' });
 
         await auction.destroy();
+
+        const io = req.app.get('io');
+        await createNotification(null, 'WARNING', `Auction Deleted: ${auction.name}`, `/auctions`, io);
+
         res.json({ message: 'Auction deleted' });
     } catch (error) {
         res.status(500).json({ message: 'Error deleting auction' });
@@ -223,6 +241,10 @@ exports.copyAuctionData = async (req, res) => {
             }
         }
 
+
+        const io = req.app.get('io');
+        await createNotification(null, 'SUCCESS', `Data Import: ${teamsCopied} Teams & ${playersCopied} Players copied to ${targetAuction.name}`, `/auctions`, io);
+
         res.json({
             message: 'Data import process completed',
             stats: {
@@ -230,6 +252,7 @@ exports.copyAuctionData = async (req, res) => {
                 players: { imported: playersCopied, skipped: playersSkipped }
             }
         });
+
 
     } catch (error) {
         console.error("Error copying data:", error);
@@ -326,6 +349,11 @@ exports.updateCurrentPlayer = async (req, res) => {
             current_bid_amount: 0,
             current_bidder_id: null
         }, { where: { id } });
+
+        const io = req.app.get('io');
+        if (playerId) {
+            await createNotification(null, 'INFO', `Auction Live: New player on the block!`, `/auction-room/${id}`, io);
+        }
 
         res.json({ message: 'Current player updated' });
     } catch (error) {

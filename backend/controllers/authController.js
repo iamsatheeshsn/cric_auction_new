@@ -45,7 +45,9 @@ exports.login = async (req, res) => {
             user: {
                 id: user.id,
                 username: user.username,
-                role: user.role
+                role: user.role,
+                display_name: user.display_name,
+                avatar: user.avatar
             }
         });
 
@@ -110,9 +112,59 @@ exports.changePassword = async (req, res) => {
         user.password = hashedPassword;
         await user.save();
 
+        const { logActivity } = require('../utils/activityLogger');
+        await logActivity(user.id, "Changed Password", "User changed their password");
+
         res.json({ message: 'Password updated successfully' });
     } catch (error) {
         console.error("Change Password Error:", error);
         res.status(500).json({ message: 'Error updating password' });
+    }
+};
+
+exports.updateProfile = async (req, res) => {
+    try {
+        let { userId, display_name, avatar } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({ message: 'Missing userId' });
+        }
+
+        const user = await User.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (req.file) {
+            // Construct the full URL for the uploaded file
+            const baseUrl = `${req.protocol}://${req.get('host')}`;
+            avatar = `${baseUrl}/uploads/${req.file.filename}`;
+        }
+
+        user.display_name = display_name || user.display_name;
+        // Only update avatar if a new one is provided (either file or url string)
+        if (avatar) {
+            user.avatar = avatar;
+        }
+
+        await user.save();
+
+        const { logActivity } = require('../utils/activityLogger');
+        await logActivity(user.id, "Updated Profile", "User updated their profile details");
+
+        res.json({
+            message: 'Profile updated',
+            user: {
+                id: user.id,
+                username: user.username,
+                role: user.role,
+                display_name: user.display_name,
+                avatar: user.avatar
+            }
+        });
+
+    } catch (error) {
+        console.error("Update Profile Error:", error);
+        res.status(500).json({ message: 'Error updating profile' });
     }
 };

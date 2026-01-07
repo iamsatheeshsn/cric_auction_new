@@ -1,22 +1,21 @@
 import React, { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import NotificationBell from './NotificationBell';
 import { FiMenu } from 'react-icons/fi';
 
 const Layout = ({ children }) => {
     const location = useLocation();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const user = JSON.parse(localStorage.getItem('user')) || {};
 
-    // Logic to determine header title from Sidebar menu items or fallback
-    // Since Sidebar has the menuItems, we either duplicate them here for title lookup
-    // or just assume a title based on path.
-    // For simplicity and to match previous behavior, I will list the items here for title lookup only.
     const menuItems = [
         { path: '/dashboard', label: 'Dashboard' },
         { path: '/auctions', label: 'Auctions' },
         { path: '/stats', label: 'Stats Hub' },
         { path: '/analytics', label: 'Analytics' },
         { path: '/tools', label: 'Tools' },
+        { path: '/profile', label: 'My Profile' },
     ];
 
     return (
@@ -40,10 +39,20 @@ const Layout = ({ children }) => {
                     </div>
 
                     <div className="flex items-center gap-4 shrink-0">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-gold to-yellow-300 flex items-center justify-center text-deep-blue font-bold">
-                            A
-                        </div>
-                        <span className="text-sm font-medium text-gray-600 hidden sm:inline">Admin</span>
+                        <NotificationBell />
+
+                        <Link to="/profile" className="flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-slate-700 p-2 rounded-lg transition-colors">
+                            {user.avatar ? (
+                                <img src={user.avatar} alt="Avatar" className="w-8 h-8 rounded-full object-cover" />
+                            ) : (
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-gold to-yellow-300 flex items-center justify-center text-deep-blue font-bold">
+                                    {(user.username || 'A').charAt(0).toUpperCase()}
+                                </div>
+                            )}
+                            <span className="text-sm font-medium text-gray-600 hidden sm:inline dark:text-gray-300">
+                                {user.display_name || user.username || 'Admin'}
+                            </span>
+                        </Link>
                     </div>
                 </header>
                 <main className="p-4 md:p-8">

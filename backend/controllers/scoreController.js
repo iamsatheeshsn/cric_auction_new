@@ -1,6 +1,7 @@
 const { Fixture, ScoreBall, Player, Team, AuctionPlayer } = require('../models');
 const { Op } = require('sequelize');
 const commentaryService = require('../services/commentaryService');
+const { createNotification } = require('./notificationController');
 
 // Get Match Scoring State
 exports.getMatchScoringDetails = async (req, res) => {
@@ -266,6 +267,14 @@ exports.updateMatchState = async (req, res) => {
         if (status === 'Completed' && fixture.auction_id) {
             await recalculateAuctionPoints(fixture.auction_id);
         }
+
+        const io = req.app.get('io');
+        if (status === 'Completed' && fixture.result_description) {
+            await createNotification(null, 'SUCCESS', `Match Finished: ${fixture.result_description}`, `/analysis/score/${fixture.id}`, io);
+        } else if (status === 'Live') {
+            await createNotification(null, 'INFO', `Match Started! ${fixture.Team1?.short_name} vs ${fixture.Team2?.short_name}`, `/analysis/score/${fixture.id}`, io);
+        }
+
 
         res.json({ message: 'Match state updated', fixture });
     } catch (error) {

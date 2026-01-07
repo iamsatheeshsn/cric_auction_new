@@ -19,6 +19,14 @@ module.exports = (sequelize) => {
         role: {
             type: DataTypes.STRING,
             defaultValue: 'admin'
+        },
+        display_name: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
+        avatar: {
+            type: DataTypes.STRING,
+            allowNull: true
         }
     });
 

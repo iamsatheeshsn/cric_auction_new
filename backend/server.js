@@ -47,6 +47,8 @@ app.use('/api/trades', require('./routes/tradeRoutes'));
 app.use('/api/shortlist', require('./routes/shortlistRoutes'));
 app.use('/api/history', require('./routes/historyRoutes'));
 app.use('/api/fan', fanRoutes);
+app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/activity', require('./routes/activityRoutes'));
 
 app.get('/', (req, res) => {
     res.send('Cricket Auction API is running...');

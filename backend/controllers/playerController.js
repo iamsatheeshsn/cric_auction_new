@@ -1,7 +1,9 @@
 const { Player, Team, ScoreBall, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const { logActivity } = require('../utils/activityLogger');
 const fs = require('fs');
 const csv = require('csv-parser');
+const { createNotification } = require('./notificationController');
 
 // Add Player (Global + Assign to Auction)
 exports.createPlayer = async (req, res) => {
@@ -51,6 +53,11 @@ exports.createPlayer = async (req, res) => {
             // Global Player Only Created
             res.status(201).json(player);
         }
+
+        // Notification
+        const io = req.app.get('io');
+        await createNotification(null, 'INFO', `New Player Added: ${name}`, `/players`, io);
+
     } catch (error) {
         console.error("Error creating player:", error);
         res.status(500).json({ message: 'Error creating player', error: error.message });
@@ -380,6 +387,19 @@ exports.updatePlayer = async (req, res) => {
             }
         }
 
+
+        const io = req.app.get('io');
+        // If critical update (like team change), notify
+        if (auction_id && req.body.team_id && req.body.team_id !== '' && req.body.team_id !== 'null') {
+            await createNotification(null, 'SUCCESS', `Player ${player.name} transferred to a new team!`, `/players`, io);
+        } else {
+            await createNotification(null, 'INFO', `Player Updated: ${player.name}`, `/players`, io);
+        }
+
+        if (req.body.userId) {
+            await logActivity(req.body.userId, "Updated Player", `Updated player '${player.name}'`, 'Player', player.id);
+        }
+
         res.json(player);
     } catch (error) {
         console.error("Error updating player:", error);
@@ -505,6 +525,11 @@ exports.markSold = async (req, res) => {
         auctionPlayer.sold_price = sod_price;
         await auctionPlayer.save();
 
+        await auctionPlayer.save();
+
+        const io = req.app.get('io');
+        await createNotification(null, 'SUCCESS', `SOLD! ${auctionPlayer.Player?.name || 'Player'} sold to ${team.name} for ₹${sod_price}!`, `/auction-room/${team.auction_id}`, io);
+
         res.json({ message: 'Player Sold!', player: auctionPlayer, team });
     } catch (error) {
         console.error("Error selling player:", error);
@@ -532,6 +557,11 @@ exports.markUnsold = async (req, res) => {
         auctionPlayer.status = 'Unsold';
         await auctionPlayer.save();
 
+        await auctionPlayer.save();
+
+        const io = req.app.get('io');
+        await createNotification(null, 'WARNING', `UNSOLD! Player marked as unsold.`, `/auction-room/${auction_id}`, io);
+
         res.json({ message: 'Player marked as Unsold' });
     } catch (error) {
         console.error("Error marking unsold:", error);
@@ -544,6 +574,10 @@ exports.deletePlayer = async (req, res) => {
     try {
         const { id } = req.params;
         await Player.destroy({ where: { id } });
+
+        const io = req.app.get('io');
+        await createNotification(null, 'WARNING', `Player ID ${id} deleted.`, `/players`, io);
+
         res.json({ message: 'Player deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Error deleting player' });
