@@ -14,6 +14,7 @@ const FantasyTeam = require('./FantasyTeam')(sequelize);
 const FantasyPlayer = require('./FantasyPlayer')(sequelize);
 const Notification = require('./Notification')(sequelize);
 const ActivityLog = require('./ActivityLog')(sequelize);
+const Message = require('./Message')(sequelize);
 
 // Associations
 
@@ -27,6 +28,12 @@ Prediction.belongsTo(Fixture, { foreignKey: 'fixture_id' });
 Prediction.belongsTo(Team, { as: 'PredictedWinner', foreignKey: 'predicted_winner_id' });
 User.hasMany(Prediction, { foreignKey: 'user_id' });
 Fixture.hasMany(Prediction, { foreignKey: 'fixture_id' });
+
+// Social Associations (Chat)
+Message.belongsTo(User, { foreignKey: 'user_id' });
+Message.belongsTo(Auction, { foreignKey: 'auction_id' });
+User.hasMany(Message, { foreignKey: 'user_id' });
+Auction.hasMany(Message, { foreignKey: 'auction_id' });
 
 // Fantasy Associations
 FantasyTeam.belongsTo(User, { foreignKey: 'user_id' });
@@ -46,23 +53,8 @@ FantasyPlayer.belongsTo(FantasyTeam, { foreignKey: 'fantasy_team_id' });
 
 FantasyPlayer.belongsTo(Player, { foreignKey: 'player_id' });
 
-module.exports = {
-    sequelize,
-    User,
-    Auction,
-    Team,
-    Player,
-    Fixture,
-    AuctionPlayer,
-    ScoreBall,
-    PointsTable,
-    Trade,
-    Bid,
-    TeamShortlist,
-    Prediction,
-    FantasyTeam,
-    FantasyPlayer
-};
+
+// Further Associations
 
 // Associations
 
@@ -164,5 +156,6 @@ module.exports = {
     FantasyTeam,
     FantasyPlayer,
     Notification,
-    ActivityLog
+    ActivityLog,
+    Message
 };

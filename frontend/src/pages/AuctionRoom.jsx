@@ -10,6 +10,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import ConfirmationModal from '../components/ConfirmationModal';
 import PlayerInfoModal from '../components/PlayerInfoModal';
+import ChatBox from '../components/social/ChatBox';
+import { useAuth } from '../context/AuthContext';
 
 // Enhanced Celebration Component
 const SoldCelebration = () => (
@@ -62,6 +64,7 @@ const AuctionRoom = () => {
     const [currentBid, setCurrentBid] = useState(0);
     const [currentBidder, setCurrentBidder] = useState(null);
     const [lastAction, setLastAction] = useState(null);
+    const { user } = useAuth();
 
     // Filtered lists
     const [unsoldPlayers, setUnsoldPlayers] = useState([]);
@@ -137,6 +140,9 @@ const AuctionRoom = () => {
     // Socket Listeners
     useEffect(() => {
         if (!socket) return;
+
+        // Join the specific auction room for chat/polls
+        socket.emit('join_room', auctionId);
 
         socket.on('bid_updated', (data) => {
             if (data.auctionId == auctionId) {
@@ -545,6 +551,9 @@ const AuctionRoom = () => {
                     {isBiddingWar && <FireAnimation />}
                 </AnimatePresence>
 
+                {/* Social Layers */}
+                <ChatBox auctionId={auctionId} />
+
                 {/* Top Stats Bar */}
                 <div className="bg-white/80 backdrop-blur-md border-b border-gray-200 p-3 sticky top-0 z-30 flex justify-between items-center shadow-sm gap-2">
                     <div className="flex items-center gap-3 min-w-0">
@@ -641,6 +650,7 @@ const AuctionRoom = () => {
 
                 {/* Main Content Area */}
                 <div className="flex flex-col flex-1 gap-6 overflow-y-auto p-4 md:p-6 pb-20">
+
                     {/* TOP: Player Spotlight Area - Full Width */}
                     <div className="flex-none bg-white rounded-3xl shadow-xl border border-white/40 flex flex-col relative overflow-hidden ring-1 ring-black/5 min-h-[600px]">
                         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>

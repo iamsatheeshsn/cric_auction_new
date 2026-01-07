@@ -49,6 +49,7 @@ app.use('/api/history', require('./routes/historyRoutes'));
 app.use('/api/fan', fanRoutes);
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/activity', require('./routes/activityRoutes'));
+app.use('/api/chat', require('./routes/chatRoutes'));
 
 app.get('/', (req, res) => {
     res.send('Cricket Auction API is running...');
@@ -73,8 +74,42 @@ const io = new Server(server, {
 // Make io accessible to our router
 app.set('io', io);
 
+const { Message, User } = require('./models');
+
 io.on('connection', (socket) => {
     console.log('New client connected:', socket.id);
+
+    // Join Auction Room
+    socket.on('join_room', async (auctionId) => {
+        socket.join(`auction_${auctionId}`);
+        console.log(`Socket ${socket.id} joined auction_${auctionId}`);
+    });
+
+    // Chat Message
+    socket.on('send_message', async (data) => {
+        // data: { auctionId, userId, content, username }
+        try {
+            const newMsg = await Message.create({
+                auction_id: data.auctionId,
+                user_id: data.userId,
+                content: data.content
+            });
+            // Fetch actual user details to ensure data consistency
+            const sender = await User.findByPk(data.userId);
+
+            // Include user info for display
+            const msgToSend = {
+                ...newMsg.toJSON(),
+                User: {
+                    username: sender?.username || 'Unknown',
+                    display_name: sender?.display_name || sender?.username || 'User'
+                }
+            };
+            io.to(`auction_${data.auctionId}`).emit('receive_message', msgToSend);
+        } catch (err) {
+            console.error("Msg Error:", err);
+        }
+    });
 
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);

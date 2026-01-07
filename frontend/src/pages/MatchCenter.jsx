@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiArrowLeft, FiActivity, FiYoutube, FiMessageSquare, FiUser } from 'react-icons/fi';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { calculateWinProbability } from '../utils/AIModel';
+import ChatBox from '../components/social/ChatBox';
 
 const MatchCenter = () => {
     const { matchId } = useParams();
@@ -492,6 +493,11 @@ const MatchCenter = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Social Chat */}
+            {matchData?.fixture?.auction_id && (
+                <ChatBox auctionId={matchData.fixture.auction_id} />
+            )}
         </div>
     );
 };

@@ -33,61 +33,64 @@ import { ThemeProvider } from './context/ThemeContext';
 
 import { SocketProvider } from './context/SocketContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { AuthProvider } from './context/AuthContext';
 
 function App() {
   return (
     <ThemeProvider>
-      <SocketProvider>
-        <NotificationProvider>
-          <Router>
-            <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-white transition-colors duration-300">
-              <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
-              <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<Login />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<RegisterPage />} />
-                <Route path="/spectator/:auctionId" element={<SpectatorView />} />
+      <AuthProvider>
+        <SocketProvider>
+          <NotificationProvider>
+            <Router>
+              <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-white transition-colors duration-300">
+                <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
+                <Routes>
+                  {/* Public Routes */}
+                  <Route path="/" element={<Login />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/spectator/:auctionId" element={<SpectatorView />} />
 
-                {/* Protected Routes */}
-                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                <Route path="/auctions" element={<ProtectedRoute><Auctions /></ProtectedRoute>} />
-                <Route path="/teams/:auctionId" element={<ProtectedRoute><Teams /></ProtectedRoute>} />
-                <Route path="/players" element={<ProtectedRoute><Players /></ProtectedRoute>} />
-                <Route path="/players/:auctionId" element={<ProtectedRoute><Players /></ProtectedRoute>} />
-                <Route path="/fixtures/:auctionId" element={<ProtectedRoute><Fixtures /></ProtectedRoute>} />
-                <Route path="/auction-room/:auctionId" element={<ProtectedRoute><AuctionRoom /></ProtectedRoute>} />
-                <Route path="/match-scoring/:fixtureId" element={<ProtectedRoute><MatchScoring /></ProtectedRoute>} />
-                <Route path="/match-analytics/:fixtureId" element={<ProtectedRoute><MatchAnalytics /></ProtectedRoute>} />
+                  {/* Protected Routes */}
+                  <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                  <Route path="/auctions" element={<ProtectedRoute><Auctions /></ProtectedRoute>} />
+                  <Route path="/teams/:auctionId" element={<ProtectedRoute><Teams /></ProtectedRoute>} />
+                  <Route path="/players" element={<ProtectedRoute><Players /></ProtectedRoute>} />
+                  <Route path="/players/:auctionId" element={<ProtectedRoute><Players /></ProtectedRoute>} />
+                  <Route path="/fixtures/:auctionId" element={<ProtectedRoute><Fixtures /></ProtectedRoute>} />
+                  <Route path="/auction-room/:auctionId" element={<ProtectedRoute><AuctionRoom /></ProtectedRoute>} />
+                  <Route path="/match-scoring/:fixtureId" element={<ProtectedRoute><MatchScoring /></ProtectedRoute>} />
+                  <Route path="/match-analytics/:fixtureId" element={<ProtectedRoute><MatchAnalytics /></ProtectedRoute>} />
 
-                <Route path="/stats" element={<ProtectedRoute><Stats /></ProtectedRoute>} />
-                <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
-                <Route path="/points" element={<ProtectedRoute><PointsTable /></ProtectedRoute>} />
-                <Route path="/auction/:id/points" element={<ProtectedRoute><PointsTable /></ProtectedRoute>} />
-                <Route path="/fanzone" element={<ProtectedRoute><FanZone /></ProtectedRoute>} />
-                <Route path="/tools" element={<ProtectedRoute><Tools /></ProtectedRoute>} />
-                <Route path="/compare" element={<ProtectedRoute><PlayerComparison /></ProtectedRoute>} />
+                  <Route path="/stats" element={<ProtectedRoute><Stats /></ProtectedRoute>} />
+                  <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+                  <Route path="/points" element={<ProtectedRoute><PointsTable /></ProtectedRoute>} />
+                  <Route path="/auction/:id/points" element={<ProtectedRoute><PointsTable /></ProtectedRoute>} />
+                  <Route path="/fanzone" element={<ProtectedRoute><FanZone /></ProtectedRoute>} />
+                  <Route path="/tools" element={<ProtectedRoute><Tools /></ProtectedRoute>} />
+                  <Route path="/compare" element={<ProtectedRoute><PlayerComparison /></ProtectedRoute>} />
 
-                <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-                <Route path="/auction/:auctionId/transfer-window" element={<ProtectedRoute><TransferWindow /></ProtectedRoute>} />
-                <Route path="/tournament-bracket/:auctionId" element={<ProtectedRoute><TournamentBracket /></ProtectedRoute>} />
+                  <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                  <Route path="/auction/:auctionId/transfer-window" element={<ProtectedRoute><TransferWindow /></ProtectedRoute>} />
+                  <Route path="/tournament-bracket/:auctionId" element={<ProtectedRoute><TournamentBracket /></ProtectedRoute>} />
 
-                {/* Broadcast Route (Public/Protected?) - Keeping protected for now, usually would be distinct */}
-                <Route path="/broadcast/:fixtureId" element={<ProtectedRoute><BroadcastView /></ProtectedRoute>} />
-                <Route path="/match-center/:matchId" element={<ProtectedRoute><MatchCenter /></ProtectedRoute>} />
+                  {/* Broadcast Route (Public/Protected?) - Keeping protected for now, usually would be distinct */}
+                  <Route path="/broadcast/:fixtureId" element={<ProtectedRoute><BroadcastView /></ProtectedRoute>} />
+                  <Route path="/match-center/:matchId" element={<ProtectedRoute><MatchCenter /></ProtectedRoute>} />
 
-                {/* Strategy Dashboard */}
-                <Route path="/strategy" element={<ProtectedRoute><StrategyDashboard /></ProtectedRoute>} />
+                  {/* Strategy Dashboard */}
+                  <Route path="/strategy" element={<ProtectedRoute><StrategyDashboard /></ProtectedRoute>} />
 
-                <Route path="/social-tools" element={<ProtectedRoute><SocialMediaTools /></ProtectedRoute>} />
-                <Route path="/history" element={<ProtectedRoute><TournamentHistory /></ProtectedRoute>} />
-                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-              </Routes>
+                  <Route path="/social-tools" element={<ProtectedRoute><SocialMediaTools /></ProtectedRoute>} />
+                  <Route path="/history" element={<ProtectedRoute><TournamentHistory /></ProtectedRoute>} />
+                  <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                </Routes>
 
-            </div>
-          </Router>
-        </NotificationProvider>
-      </SocketProvider>
+              </div>
+            </Router>
+          </NotificationProvider>
+        </SocketProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }
