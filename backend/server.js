@@ -1,8 +1,8 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const { sequelize } = require('./models');
-require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -79,20 +79,26 @@ const { Message, User } = require('./models');
 io.on('connection', (socket) => {
     console.log('New client connected:', socket.id);
 
-    // Join Auction Room
-    socket.on('join_room', async (auctionId) => {
-        socket.join(`auction_${auctionId}`);
-        console.log(`Socket ${socket.id} joined auction_${auctionId}`);
+    // Join Room
+    socket.on('join_room', async (room) => {
+        // Room can be 'auction_{id}' or 'match_{id}'
+        socket.join(room);
+        console.log(`Socket ${socket.id} joined room: ${room}`);
     });
 
     // Chat Message
     socket.on('send_message', async (data) => {
-        // data: { auctionId, userId, content, username }
+        // data: { auctionId, userId, content, username, type, fixtureId }
         try {
+            const type = data.type || 'auction_room';
+            const fixtureId = data.fixtureId || null;
+
             const newMsg = await Message.create({
                 auction_id: data.auctionId,
                 user_id: data.userId,
-                content: data.content
+                content: data.content,
+                type: type,
+                fixture_id: fixtureId
             });
             // Fetch actual user details to ensure data consistency
             const sender = await User.findByPk(data.userId);
@@ -105,7 +111,9 @@ io.on('connection', (socket) => {
                     display_name: sender?.display_name || sender?.username || 'User'
                 }
             };
-            io.to(`auction_${data.auctionId}`).emit('receive_message', msgToSend);
+
+            const room = type === 'match_center' ? `match_${fixtureId}` : `auction_${data.auctionId}`;
+            io.to(room).emit('receive_message', msgToSend);
         } catch (err) {
             console.error("Msg Error:", err);
         }

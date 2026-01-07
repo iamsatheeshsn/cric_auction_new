@@ -19,6 +19,14 @@ module.exports = (sequelize) => {
             type: DataTypes.TEXT,
             allowNull: false
         },
+        type: {
+            type: DataTypes.ENUM('auction_room', 'match_center'),
+            defaultValue: 'auction_room'
+        },
+        fixture_id: {
+            type: DataTypes.INTEGER,
+            allowNull: true
+        },
         timestamp: {
             type: DataTypes.DATE,
             defaultValue: DataTypes.NOW

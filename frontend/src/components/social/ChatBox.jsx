@@ -5,7 +5,7 @@ import api from '../../api/axios';
 import { FiSend, FiMessageSquare, FiX, FiMinimize2, FiMaximize2 } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const ChatBox = ({ auctionId }) => {
+const ChatBox = ({ auctionId, type = 'auction_room', fixtureId = null }) => {
     const { socket } = useSocket();
     const { user } = useAuth();
     const [messages, setMessages] = useState([]);
@@ -18,13 +18,17 @@ const ChatBox = ({ auctionId }) => {
 
         // Join Room
         if (socket) {
-            socket.emit('join_room', auctionId);
+            const room = type === 'match_center' ? `match_${fixtureId}` : `auction_${auctionId}`;
+            socket.emit('join_room', room);
         }
 
         // Load history
         const fetchHistory = async () => {
             try {
-                const res = await api.get(`/chat/${auctionId}`);
+                // Pass type and fixtureId as query params
+                const res = await api.get(`/chat/${auctionId}`, {
+                    params: { type, fixtureId }
+                });
                 setMessages(res.data);
             } catch (err) {
                 console.error("Failed to load chat", err);
@@ -44,7 +48,7 @@ const ChatBox = ({ auctionId }) => {
         return () => {
             if (socket) socket.off('receive_message');
         };
-    }, [auctionId, socket]);
+    }, [auctionId, socket, type, fixtureId]);
 
     useEffect(() => {
         scrollToBottom();
@@ -63,7 +67,9 @@ const ChatBox = ({ auctionId }) => {
             userId: user.id,
             username: user.username,
             displayName: user.display_name || user.username,
-            content: input
+            content: input,
+            type,
+            fixtureId
         };
 
         socket.emit('send_message', msgData);
@@ -96,7 +102,7 @@ const ChatBox = ({ auctionId }) => {
                         <div className="bg-slate-900 text-white p-4 flex justify-between items-center">
                             <h3 className="font-bold flex items-center gap-2">
                                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                                Auction Room Chat
+                                {type === 'match_center' ? 'Match Center Chat' : 'Auction Room Chat'}
                             </h3>
                             <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-white"><FiMinimize2 /></button>
                         </div>

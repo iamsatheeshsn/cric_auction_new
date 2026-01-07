@@ -496,7 +496,11 @@ const MatchCenter = () => {
 
             {/* Social Chat */}
             {matchData?.fixture?.auction_id && (
-                <ChatBox auctionId={matchData.fixture.auction_id} />
+                <ChatBox
+                    auctionId={matchData.fixture.auction_id}
+                    type="match_center"
+                    fixtureId={matchId}
+                />
             )}
         </div>
     );
