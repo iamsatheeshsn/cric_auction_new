@@ -495,6 +495,63 @@ exports.recordBall = async (req, res) => {
             commentary: finalCommentary
         });
 
+        // --- UPDATE FIXTURE STATE (Live "On Strike" Logic) ---
+        const fixture = await Fixture.findByPk(fixtureId);
+        if (fixture) {
+            let nextStrikerId = striker_id;
+            let nextNonStrikerId = non_striker_id;
+            let nextBowlerId = bowler_id;
+
+            // 1. Handle Wicket
+            if (is_wicket) {
+                // If wicket, the striker is out (usually). 
+                // We don't know the new batter yet. Set the OUT player to null.
+                if (player_out_id === nextStrikerId) nextStrikerId = null;
+                else if (player_out_id === nextNonStrikerId) nextNonStrikerId = null;
+            } else {
+                // 2. Handle Strike Rotation (Odd Runs)
+                const totalRuns = runs_scored + (extra_type === 'Wide' || extra_type === 'NoBall' ? 1 : 0); // Be careful with extras. 
+                // Actually 'runs_scored' is off the bat. 'extras' is total extras.
+                // Standard logic: If runs_scored is odd -> swap.
+                // If extras has odd runs? (e.g. 1 bye) -> swap.
+                // Simplify: (runs_scored + (extras if valid for swap)) 
+
+                // Let's use the runs_scored + extras for now, assuming standard rules.
+                // Excluding Wides/NoBalls from ball count but they might involve running.
+                // If runs_scored is odd, they swapped.
+                // If byes/legbyes is odd, they swapped.
+                const runCount = runs_scored + (['Byes', 'LegByes'].includes(extra_type) ? extras : 0);
+
+                if (runCount % 2 !== 0) {
+                    [nextStrikerId, nextNonStrikerId] = [nextNonStrikerId, nextStrikerId];
+                }
+            }
+
+            // 3. Handle End of Over
+            // isLegal is defined above
+            const isLegalBall = (extra_type !== 'Wide' && extra_type !== 'NoBall');
+            if (ball_number === 6 && isLegalBall) {
+                // End of over -> Swap Ends -> Striker becomes Non-Striker? 
+                // No. Batter A and B are at creases.
+                // Over ends. Fielders move.
+                // Batter A remains at Striker's End? NO.
+                // The ENDS change. So the BATSMAN at the NON-STRIKER end is now at the STRIKER end facing the new bowler.
+                // So we swap striker/non-striker IDs.
+                [nextStrikerId, nextNonStrikerId] = [nextNonStrikerId, nextStrikerId];
+
+                // Bowler finishes over. Set bowler to null (wait for new).
+                nextBowlerId = null;
+            }
+
+            await fixture.update({
+                striker_id: nextStrikerId,
+                non_striker_id: nextNonStrikerId,
+                bowler_id: nextBowlerId,
+                current_innings: innings
+            });
+        }
+        // -----------------------------------------------------
+
         res.status(201).json(newBall);
     } catch (error) {
         console.error("Error recording ball:", error);

@@ -44,18 +44,41 @@ const templates = {
         "Boom! SIX runs immediately off the bat.",
         "High and handsome! That is a MAXIMUM!"
     ],
-    Wicket: [
-        "OUT! Clean bowled! The stumps are swaying!",
-        "OUT! Caught! Straight down the throat of the fielder.",
-        "OUT! Edged and gone! The keeper makes no mistake.",
-        "OUT! LBW! Plumb in front, up goes the finger!",
-        "OUT! Run out! Mix up in the middle and he's gone.",
-        "Gone! The big wicket falls!"
-    ],
+    Wicket: {
+        Bowled: [
+            "OUT! Clean bowled! The stumps are swaying!",
+            "Castled! Through the gate and into the stumps.",
+            "Knocked him over! What a delivery!"
+        ],
+        Caught: [
+            "OUT! Caught! Straight down the throat of the fielder.",
+            "Edged and taken! The keeper makes no mistake.",
+            "In the air... and taken! Safe pair of hands."
+        ],
+        LBW: [
+            "OUT! LBW! Plumb in front, up goes the finger!",
+            "Huge appeal and given! That looked adjacent.",
+            "Trapped in front! No hesitation from the umpire."
+        ],
+        RunOut: [
+            "OUT! Run out! Mix up in the middle and he's gone.",
+            "Direct hit! The batter is short of his crease.",
+            "Run out! Never a run there."
+        ],
+        Stumped: [
+            "OUT! Stumped! Beat in flight and the keeper whips the bails off.",
+            "Stumped! Dragged his foot out and pays the price."
+        ],
+        Default: [
+            "Gone! The big wicket falls!",
+            "OUT! That's the end of a fine innings.",
+            "Wicket! The breakthrough the fielding side needed."
+        ]
+    },
     Wide: [
         "Wide ball, slips down the leg side.",
         "Way outside off, called a Wide.",
-        "Too high, signaled Wide/No-ball." // Simplified
+        "Too high, signaled Wide/No-ball."
     ],
     NoBall: [
         "No Ball! Overstepping the line.",
@@ -74,11 +97,21 @@ exports.generateCommentary = (ballData, context = {}) => {
     let text = "";
 
     // Priority: Wicket > Boundaries > Extras > Runs
+    // Priority: Wicket > Boundaries > Extras > Runs
     if (is_wicket) {
-        text = getRandomTemplate(templates.Wicket);
+        // Map frontend wicket_type to template keys
+        // Frontend might send: "Bowled", "Caught", "LBW", "Run Out", "Stumped"
+        // Ensure keys match.
+        // Normalize input: remove spaces for matching (Run Out -> RunOut)
+        const typeKey = wicket_type ? wicket_type.replace(/\s+/g, '') : 'Default';
+
+        // Check if specific template exists, else Default
+        const wicketList = templates.Wicket[typeKey] || templates.Wicket.Default;
+        text = getRandomTemplate(wicketList);
+
         if (wicket_type && wicket_type !== 'Run Out') {
             // Inject names if possible, simplistic replace if generic, or append
-            if (strikerName) text = text.replace("Player", strikerName); // If template had placeholder
+            // text = text.replace("Player", strikerName); // If template had placeholder
             text += ` ${strikerName} has to walk back.`;
         }
     } else if (runs_scored === 6) {

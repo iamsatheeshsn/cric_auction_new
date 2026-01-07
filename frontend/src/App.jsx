@@ -26,6 +26,7 @@ import BroadcastView from './pages/BroadcastView';
 import StrategyDashboard from './pages/StrategyDashboard';
 import SocialMediaTools from './pages/SocialMediaTools';
 import TournamentHistory from './pages/TournamentHistory';
+import MatchCenter from './pages/MatchCenter';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ThemeProvider } from './context/ThemeContext';
 
@@ -70,6 +71,7 @@ function App() {
 
               {/* Broadcast Route (Public/Protected?) - Keeping protected for now, usually would be distinct */}
               <Route path="/broadcast/:fixtureId" element={<ProtectedRoute><BroadcastView /></ProtectedRoute>} />
+              <Route path="/match-center/:matchId" element={<ProtectedRoute><MatchCenter /></ProtectedRoute>} />
 
               {/* Strategy Dashboard */}
               <Route path="/strategy" element={<ProtectedRoute><StrategyDashboard /></ProtectedRoute>} />

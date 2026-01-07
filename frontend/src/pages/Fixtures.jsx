@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiArrowLeft, FiRefreshCw, FiPrinter, FiTrash2, FiCalendar, FiMapPin, FiPlus, FiX, FiEdit, FiSearch, FiChevronLeft, FiChevronRight, FiActivity, FiUsers, FiShield, FiAward, FiStar, FiCheckCircle, FiShare2 } from 'react-icons/fi';
+import { FiArrowLeft, FiRefreshCw, FiPrinter, FiTrash2, FiCalendar, FiMapPin, FiPlus, FiX, FiEdit, FiSearch, FiChevronLeft, FiChevronRight, FiActivity, FiUsers, FiShield, FiAward, FiStar, FiCheckCircle, FiShare2, FiMonitor } from 'react-icons/fi';
 import ShareCardModal from '../components/social/ShareCardModal';
 import MatchSummaryCard from '../components/social/templates/MatchSummaryCard';
 import api from '../api/axios';
@@ -368,6 +368,17 @@ const Fixtures = () => {
                                         >
                                             <FiEdit size={14} />
                                         </button>
+
+                                        {/* Watch Live Button */}
+                                        {(match.status === 'Live' || match.status === 'Completed') && (
+                                            <Link
+                                                to={`/match-center/${match.id}`}
+                                                className="text-white hover:text-white bg-red-500 hover:bg-red-600 p-1.5 rounded-full transition-colors shadow-sm animate-pulse"
+                                                title="Watch in Match Center"
+                                            >
+                                                <FiMonitor size={14} />
+                                            </Link>
+                                        )}
                                         <button
                                             onClick={() => handleDeleteItem(match.id)}
                                             disabled={match.status === 'Completed' || match.status === 'Live'}
