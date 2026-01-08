@@ -6,6 +6,8 @@ import api from '../api/axios';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import ConfirmationModal from '../components/ConfirmationModal';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 import PlayerInfoModal from '../components/PlayerInfoModal';
 
@@ -162,6 +164,151 @@ const Teams = () => {
 
     const handleViewSquad = (team) => {
         setViewSquad(team);
+    };
+
+    const imageUrlToBase64 = (url) => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = 'Anonymous';
+            img.src = url;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                resolve(canvas.toDataURL('image/png'));
+            };
+            img.onerror = (e) => {
+                console.error("Image load error", e);
+                resolve(null); // Resolve null on error to continue
+            };
+        });
+    };
+
+    const downloadPDF = async () => {
+        if (!viewSquad) return;
+
+        try {
+            const doc = new jsPDF();
+
+            // -- Branding Colors --
+            const primaryColor = [22, 33, 62]; // deep-blue equivalent
+
+            // -- Load Team Logo --
+            let teamLogoBase64 = null;
+            if (viewSquad.image_path) {
+                teamLogoBase64 = await imageUrlToBase64(`http://localhost:5000/${viewSquad.image_path.replace(/\\/g, '/')}`);
+            }
+
+            // -- Header Background --
+            doc.setFillColor(...primaryColor);
+            doc.rect(0, 0, 210, 40, 'F');
+
+            // -- Team Logo in Header --
+            if (teamLogoBase64) {
+                doc.addImage(teamLogoBase64, 'PNG', 14, 5, 30, 30);
+            }
+
+            // -- Team Name & Title --
+            const textStartX = teamLogoBase64 ? 50 : 14;
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+            doc.setFont('helvetica', 'bold');
+            doc.text(viewSquad.name, textStartX, 20);
+
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Squad List & Financial Summary`, textStartX, 30);
+
+            // -- Stats --
+            doc.setFontSize(12);
+            doc.text(`Funds Remaining: ${viewSquad.purse_remaining?.toLocaleString()}`, 140, 20);
+            doc.text(`Squad Size: ${viewSquad.Players?.length || 0}/${viewSquad.players_per_team}`, 140, 30);
+
+            // -- Content Gap --
+            let yPos = 50;
+
+            // -- Pre-load Player Images --
+            const playersWithImages = await Promise.all(
+                (viewSquad.Players || []).map(async (p) => {
+                    let imgBase64 = null;
+                    if (p.image_path) {
+                        imgBase64 = await imageUrlToBase64(`http://localhost:5000/${p.image_path.replace(/\\/g, '/')}`);
+                    }
+                    return { ...p, imgBase64 };
+                })
+            );
+
+            // -- Players Table --
+            const tableColumn = ["#", "Player Name", "Role", "Sold Price (INR)"];
+            const tableRows = playersWithImages.map((p, index) => [
+                index + 1,
+                p.name,
+                p.role,
+                p.sold_price?.toLocaleString()
+            ]);
+
+            autoTable(doc, {
+                startY: yPos,
+                head: [tableColumn],
+                body: tableRows,
+                theme: 'striped',
+                headStyles: {
+                    fillColor: primaryColor,
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold'
+                },
+                styles: {
+                    fontSize: 10,
+                    cellPadding: 3,
+                    valign: 'middle',
+                    minCellHeight: 15
+                },
+                columnStyles: {
+                    0: { cellWidth: 10 }, // Index
+                    1: { cellWidth: 80 }, // Name column (width increased)
+                    3: { fontStyle: 'bold', halign: 'right' } // Price
+                },
+                didDrawCell: (data) => {
+                    // Draw Image in Player Name column (index 1)
+                    if (data.section === 'body' && data.column.index === 1) {
+                        const player = playersWithImages[data.row.index];
+                        if (player && player.imgBase64) {
+                            const imgSize = 10;
+                            // Align image to the left with padding
+                            const x = data.cell.x + 2;
+                            const y = data.cell.y + (data.cell.height - imgSize) / 2;
+                            doc.addImage(player.imgBase64, 'PNG', x, y, imgSize, imgSize);
+                        }
+                    }
+                },
+                didParseCell: (data) => {
+                    // Add Left Padding to Player Name column (index 1) to make space for image
+                    if (data.section === 'body' && data.column.index === 1) {
+                        data.cell.styles.cellPadding = { top: 3, right: 3, bottom: 3, left: 14 };
+                    }
+                    // Force right alignment for the last column (Price) in both header and body (index 3 now)
+                    if (data.column.index === 3) {
+                        data.cell.styles.halign = 'right';
+                    }
+                }
+            });
+
+            // -- Footer --
+            const pageHeight = doc.internal.pageSize.height;
+            doc.setFillColor(240, 240, 240);
+            doc.rect(0, pageHeight - 20, 210, 20, 'F');
+            doc.setTextColor(100, 100, 100);
+            doc.setFontSize(8);
+            doc.text(`Generated by CricAuction - ${new Date().toLocaleDateString()}`, 14, pageHeight - 8);
+
+            doc.save(`${viewSquad.short_name}_Squad.pdf`);
+            toast.success("PDF Downloaded Successfully");
+        } catch (error) {
+            console.error("PDF Export Error:", error);
+            toast.error("Failed to export PDF: " + error.message);
+        }
     };
 
     return (
@@ -321,13 +468,19 @@ const Teams = () => {
                                     </div>
                                     <div className="text-center md:text-left">
                                         <h2 className="text-3xl font-black">{viewSquad.name}</h2>
-                                        <div className="flex gap-4 mt-2 justify-center md:justify-start">
+                                        <div className="flex gap-4 mt-2 justify-center md:justify-start items-center">
                                             <div className="bg-white/20 px-3 py-1 rounded text-sm font-bold">
                                                 Funds Left: ₹{viewSquad.purse_remaining?.toLocaleString()}
                                             </div>
                                             <div className="bg-white/20 px-3 py-1 rounded text-sm font-bold">
                                                 Squad: {viewSquad.Players?.length || 0}/{viewSquad.players_per_team}
                                             </div>
+                                            <button
+                                                onClick={downloadPDF}
+                                                className="bg-white text-deep-blue px-3 py-1 rounded text-sm font-bold hover:bg-gray-100 transition-colors flex items-center gap-2 shadow-sm"
+                                            >
+                                                <FiHash /> Export PDF
+                                            </button>
                                         </div>
                                     </div>
                                 </div>

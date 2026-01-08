@@ -4,6 +4,7 @@ import Sidebar from './Sidebar';
 import NotificationBell from './NotificationBell';
 import { FiMenu } from 'react-icons/fi';
 import Ticker from './Ticker';
+import CommandPalette from './CommandPalette';
 
 const Layout = ({ children }) => {
     const location = useLocation();
@@ -31,6 +32,8 @@ const Layout = ({ children }) => {
 
     return (
         <div className="flex h-screen bg-slate-100 dark:bg-slate-900 print:bg-white print:h-auto transition-colors duration-300">
+            <CommandPalette />
+
             {/* Sidebar */}
             <Sidebar
                 isOpen={isSidebarOpen}

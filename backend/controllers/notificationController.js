@@ -5,13 +5,14 @@ exports.getNotifications = async (req, res) => {
     try {
         const userId = req.user.id;
 
-        // Fetch ALL notifications for this user (history)
-        const userParams = {
-            userId: userId
-        };
-
+        // Fetch ALL notifications for this user (history) + Global
         const list = await Notification.findAll({
-            where: userParams,
+            where: {
+                [Op.or]: [
+                    { userId: userId },
+                    { userId: null }
+                ]
+            },
             order: [['createdAt', 'DESC']],
             limit: 50
         });
@@ -26,13 +27,14 @@ exports.getNotifications = async (req, res) => {
 exports.markAsRead = async (req, res) => {
     try {
         const { id } = req.body;
+        console.log("MarkAsRead Request:", { id, userId: req.user?.id });
         const userId = req.user.id;
 
         if (id) {
             // Mark specific
             await Notification.update({ isRead: true }, {
                 where: {
-                    id: id,
+                    id: parseInt(id), // Ensure integer
                     userId: userId
                 }
             });

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FiBell, FiCheck, FiInfo, FiAlertTriangle, FiCheckCircle, FiXCircle } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNotifications } from '../context/NotificationContext';
+import { useNotifications } from '../hooks/useNotifications';
 import { Link } from 'react-router-dom';
 
 const NotificationBell = () => {
@@ -107,6 +107,8 @@ const NotificationBell = () => {
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
+                                                        console.log("Clicked Mark Read for:", note);
+                                                        if (!note.id) console.error("NOTE ID IS MISSING:", note);
                                                         markAsRead(note.id);
                                                     }}
                                                     className="opacity-0 group-hover:opacity-100 absolute top-2 right-2 p-1 text-gray-500 hover:text-white transition-opacity"
