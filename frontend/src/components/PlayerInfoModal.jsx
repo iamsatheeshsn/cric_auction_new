@@ -1,9 +1,36 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiUser, FiCalendar, FiPhone, FiInfo, FiActivity, FiDollarSign } from 'react-icons/fi';
+import { FiX, FiUser, FiCalendar, FiPhone, FiInfo, FiActivity, FiDollarSign, FiSave, FiEdit3 } from 'react-icons/fi';
+import api from '../api/axios';
+import { toast } from 'react-toastify';
 
-const PlayerInfoModal = ({ player, isOpen, onClose }) => {
+const PlayerInfoModal = ({ player, isOpen, onClose, onNoteSave }) => {
     if (!isOpen || !player) return null;
+
+    const [myNote, setMyNote] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (player) {
+            setMyNote(player.my_note || '');
+        }
+    }, [player]);
+
+    const handleSaveNote = async () => {
+        setIsSaving(true);
+        try {
+            await api.post(`/players/${player.id}/note`, { note: myNote });
+            toast.success('Note saved successfully');
+            if (onNoteSave) {
+                onNoteSave(myNote);
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to save note');
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     // Helper to format date
     const formatDate = (dateString) => {
@@ -234,10 +261,30 @@ const PlayerInfoModal = ({ player, isOpen, onClose }) => {
 
                             {player.notes && (
                                 <div className="md:col-span-3 bg-yellow-50 p-4 rounded-xl border border-yellow-100 text-sm text-yellow-800">
-                                    <p className="font-bold flex items-center gap-2 mb-1"><FiInfo /> Notes</p>
+                                    <p className="font-bold flex items-center gap-2 mb-1"><FiInfo /> Global Notes</p>
                                     {player.notes}
                                 </div>
                             )}
+
+                            {/* Private Notes Section */}
+                            <div className="md:col-span-3 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                <p className="font-bold flex items-center gap-2 mb-2 text-blue-800"><FiEdit3 /> My Private Scouting Notes</p>
+                                <div className="relative">
+                                    <textarea
+                                        value={myNote}
+                                        onChange={(e) => setMyNote(e.target.value)}
+                                        placeholder="Add your private notes here (e.g. Target Price, Injury Status)..."
+                                        className="w-full p-3 rounded-lg border border-blue-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm bg-white shadow-sm min-h-[80px]"
+                                    />
+                                    <button
+                                        onClick={handleSaveNote}
+                                        disabled={isSaving}
+                                        className="absolute bottom-2 right-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors disabled:opacity-50 shadow-sm"
+                                    >
+                                        <FiSave /> {isSaving ? 'Saving...' : 'Save Note'}
+                                    </button>
+                                </div>
+                            </div>
 
                         </div>
                     </div>

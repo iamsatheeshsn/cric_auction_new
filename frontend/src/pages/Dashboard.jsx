@@ -74,28 +74,7 @@ const Dashboard = () => {
                 </div>
 
                 {/* KPI Cards Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <motion.div variants={itemVariants}>
-                        <StatsCard
-                            title="Players Sold"
-                            value={stats?.charts?.playerStatus?.Sold || 0}
-                            subText={`/ ${stats?.counts?.players} Total`}
-                            icon={FiUsers}
-                            colorClass="text-blue-600 dark:text-blue-400"
-                            borderClass="border-blue-500"
-                        />
-                    </motion.div>
-
-                    <motion.div variants={itemVariants}>
-                        <StatsCard
-                            title="Total Spent"
-                            value={formatCurrency(stats?.counts?.totalSpent || 0)}
-                            icon={FiDollarSign}
-                            colorClass="text-green-600 dark:text-green-400"
-                            borderClass="border-green-500"
-                        />
-                    </motion.div>
-
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
                     <motion.div variants={itemVariants}>
                         <StatsCard
                             title="Active Teams"

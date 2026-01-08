@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const playerController = require('../controllers/playerController');
 const upload = require('../middleware/upload');
+const { verifyToken, optionalAuth } = require('../middleware/authMiddleware');
 
 console.log("Loading Player Routes...");
 
@@ -22,9 +23,9 @@ router.put('/:id', upload.fields([
 ]), playerController.updatePlayer);
 
 // Get Players by Auction
-router.get('/auction/:auctionId', playerController.getPlayersByAuction);
-router.get('/', playerController.getAllPlayers); // Global Players Route
-router.get('/v2/auction/:auctionId', playerController.getPlayersByAuction); // V2 Route for debugging/bypassing cache
+router.get('/auction/:auctionId', optionalAuth, playerController.getPlayersByAuction);
+router.get('/', optionalAuth, playerController.getAllPlayers); // Global Players Route
+router.get('/v2/auction/:auctionId', optionalAuth, playerController.getPlayersByAuction); // V2 Route for debugging/bypassing cache
 
 // Auction Actions
 router.get('/unregistered/:auctionId', playerController.getUnregisteredPlayers);
@@ -32,6 +33,7 @@ router.post('/register', playerController.registerPlayer);
 router.post('/regenerate-pids', playerController.regeneratePlayerIds);
 router.post('/:id/sold', playerController.markSold);
 router.post('/:id/unsold', playerController.markUnsold);
+router.post('/:id/note', verifyToken, playerController.addScoutingNote); // New Route
 router.put('/:id/revisit', playerController.revisitPlayer);
 
 // Delete Player

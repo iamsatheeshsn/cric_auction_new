@@ -3,7 +3,7 @@ import { useSocket } from '../context/SocketContext';
 import Layout from '../components/Layout';
 import Sidebar from '../components/Sidebar';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiCheckCircle, FiUser, FiArrowRight, FiSkipForward, FiMonitor, FiActivity, FiDollarSign, FiUsers, FiCpu, FiInfo, FiExternalLink, FiMenu } from 'react-icons/fi';
+import { FiCheckCircle, FiUser, FiArrowRight, FiSkipForward, FiMonitor, FiActivity, FiDollarSign, FiUsers, FiCpu, FiInfo, FiExternalLink, FiMenu, FiBookmark } from 'react-icons/fi';
 import api from '../api/axios';
 import { getAuctionAdvice } from '../utils/AIModel';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -725,6 +725,26 @@ const AuctionRoom = () => {
                                                 {/* Col 2: Actions & Quick Bid */}
                                                 <div className="flex flex-col gap-4 h-full overflow-y-auto custom-scrollbar pr-2">
 
+                                                    {/* Scouting Note Display */}
+                                                    {currentPlayer.my_note && (
+                                                        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 mb-4 shadow-sm relative overflow-hidden group">
+                                                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                                                                <FiBookmark size={40} className="text-yellow-600" />
+                                                            </div>
+                                                            <div className="flex items-start gap-3 relative z-10">
+                                                                <div className="p-2 bg-yellow-100/50 rounded-lg text-yellow-700 shrink-0 mt-0.5">
+                                                                    <FiBookmark size={16} />
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[10px] font-bold text-yellow-600 uppercase tracking-widest mb-1">Scouting Note</p>
+                                                                    <p className="text-sm font-semibold text-slate-700 leading-relaxed italic">
+                                                                        "{currentPlayer.my_note}"
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
                                                     {/* Quick Bid Grid */}
                                                     <div>
                                                         <div className="flex justify-between items-center mb-2">
@@ -1122,7 +1142,19 @@ const AuctionRoom = () => {
                     </div>
                 )}
 
-                <PlayerInfoModal player={infoPlayer} isOpen={!!infoPlayer} onClose={() => setInfoPlayer(null)} />
+                <PlayerInfoModal
+                    player={infoPlayer}
+                    isOpen={!!infoPlayer}
+                    onClose={() => setInfoPlayer(null)}
+                    onNoteSave={(note) => {
+                        setInfoPlayer(prev => ({ ...prev, my_note: note }));
+                        // Also update lists if visible there
+                        setPlayers(prev => prev.map(p => p.id === infoPlayer.id ? { ...p, my_note: note } : p));
+                        setUnsoldPlayers(prev => prev.map(p => p.id === infoPlayer.id ? { ...p, my_note: note } : p));
+                        setSoldPlayers(prev => prev.map(p => p.id === infoPlayer.id ? { ...p, my_note: note } : p));
+                        setUnsoldPassedPlayers(prev => prev.map(p => p.id === infoPlayer.id ? { ...p, my_note: note } : p));
+                    }}
+                />
             </div>
         </div >
     );

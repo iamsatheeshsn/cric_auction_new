@@ -144,6 +144,14 @@ Watchlist.belongsTo(User, { foreignKey: 'user_id' });
 Watchlist.belongsTo(Player, { foreignKey: 'player_id' });
 User.hasMany(Watchlist, { foreignKey: 'user_id', onDelete: 'CASCADE' });
 
+// Scouting Notes Associations
+const ScoutingNote = require('./ScoutingNote')(sequelize);
+User.hasMany(ScoutingNote, { foreignKey: 'user_id', onDelete: 'CASCADE' });
+ScoutingNote.belongsTo(User, { foreignKey: 'user_id' });
+
+Player.hasMany(ScoutingNote, { foreignKey: 'player_id', onDelete: 'CASCADE' });
+ScoutingNote.belongsTo(Player, { foreignKey: 'player_id' });
+
 
 module.exports = {
     sequelize,
@@ -165,5 +173,6 @@ module.exports = {
     ActivityLog,
     ActivityLog,
     Message,
-    Watchlist
+    Watchlist,
+    ScoutingNote
 };

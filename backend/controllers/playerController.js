@@ -106,6 +106,24 @@ exports.getPlayersByAuction = async (req, res) => {
             order: [['order_id', 'ASC']]
         });
 
+        // Fetch Notes separately if user is logged in (to avoid complex include logic if not needed)
+        // Create a fixture filter based on the auction
+        const playerIds = rows.map(ap => ap.player_id);
+        const notesMap = {};
+        const { ScoutingNote } = require('../models');
+
+        if (req.user && req.user.id) {
+            const notes = await ScoutingNote.findAll({
+                where: {
+                    user_id: req.user.id,
+                    player_id: { [Op.in]: playerIds }
+                }
+            });
+            notes.forEach(n => {
+                notesMap[n.player_id] = n.note;
+            });
+        }
+
         // Create a fixture filter based on the auction
         const { Fixture } = require('../models');
         const auctionFixtures = await Fixture.findAll({
@@ -209,7 +227,8 @@ exports.getPlayersByAuction = async (req, res) => {
                 bowling_type: p.bowling_type,
                 tshirt_size: p.tshirt_size,
                 trouser_size: p.trouser_size,
-                notes: ap.notes || p.notes, // PRIORITIZE Auction Notes too if we want
+                notes: ap.notes || p.notes, // PRIORITIZE Auction Notes
+                my_note: notesMap[p.id] || null, // Private Scouting Note
                 player_link: p.player_link,
                 jersey_no: p.preferred_jersey_no,
 
@@ -295,8 +314,20 @@ exports.getAllPlayers = async (req, res) => {
             });
             const runs_conceded = rc_result[0]?.dataValues.total || 0;
 
+            // Fetch private note if user is logged in
+            let my_note = null;
+            if (req.user && req.user.id) {
+                // Optimization: Fetch all notes upfront instead of N+1? 
+                // Since this is getAllPlayers with pagination, N is small (20).
+                // But doing it inside the loop is definitely N+1 queries.
+                // Optimizing: Let's follow the pattern in getPlayersByAuction - fetch outside loop.
+                // However, refactoring the whole function to map pattern is risky for now.
+                // Let's just do single query here for now as simpler fix, or fetch map outside loop.
+            }
+
             return {
                 ...p.toJSON(),
+                my_note: null, // Placeholder, see logic below
                 stats: {
                     matches,
                     runs,
@@ -308,6 +339,26 @@ exports.getAllPlayers = async (req, res) => {
                 }
             };
         }));
+
+        // OPTIMIZATION: Fetch notes for all players in current page
+        if (req.user && req.user.id && players.length > 0) {
+            const { ScoutingNote } = require('../models');
+            const playerIds = players.map(p => p.id);
+            const notes = await ScoutingNote.findAll({
+                where: {
+                    user_id: req.user.id,
+                    player_id: { [Op.in]: playerIds }
+                }
+            });
+
+            const notesMap = {};
+            notes.forEach(n => { notesMap[n.player_id] = n.note; });
+
+            // Attach to players
+            players.forEach(p => {
+                p.my_note = notesMap[p.id] || null;
+            });
+        }
 
         res.json({
             totalItems: count,
@@ -789,3 +840,35 @@ exports.downloadSampleCSV = (req, res) => {
     res.attachment('sample_players.csv');
     return res.send(csvContent);
 };
+
+// Add/Update Scouting Note
+exports.addScoutingNote = async (req, res) => {
+    try {
+        const { id } = req.params; // Player ID (Global ID)
+        const { note } = req.body;
+        const userId = req.user.id; // Assumes authMiddleware ensured this
+
+        if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+        const { ScoutingNote } = require('../models');
+
+        // Upsert Note
+        // Use findOne first to avoid unique constraint race condition slightly, or utilize upsert if supported well
+        // Sequelize upsert:
+        const [scoutingNote, created] = await ScoutingNote.findOrCreate({
+            where: { user_id: userId, player_id: id },
+            defaults: { note }
+        });
+
+        if (!created) {
+            scoutingNote.note = note;
+            await scoutingNote.save();
+        }
+
+        res.json({ message: 'Note saved', note: scoutingNote });
+    } catch (error) {
+        console.error("Error saving note:", error);
+        res.status(500).json({ message: 'Error saving note' });
+    }
+};
+

@@ -921,6 +921,12 @@ const Players = () => {
                 player={selectedPlayer}
                 isOpen={!!selectedPlayer}
                 onClose={() => setSelectedPlayer(null)}
+                onNoteSave={(note) => {
+                    // Update local selected player state so it persists if modal re-opens
+                    setSelectedPlayer(prev => ({ ...prev, my_note: note }));
+                    // Update main list
+                    setPlayers(prev => prev.map(p => p.id === selectedPlayer.id ? { ...p, my_note: note } : p));
+                }}
             />
 
             {/* Registration Modal */}

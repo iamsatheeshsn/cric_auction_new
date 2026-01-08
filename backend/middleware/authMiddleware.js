@@ -22,4 +22,20 @@ const verifyToken = (req, res, next) => {
     }
 };
 
-module.exports = { verifyToken };
+const optionalAuth = (req, res, next) => {
+    try {
+        const token = req.headers['authorization']?.split(' ')[1];
+        if (!token) return next();
+
+        jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+            if (!err) {
+                req.user = decoded;
+            }
+            next();
+        });
+    } catch (error) {
+        next();
+    }
+};
+
+module.exports = { verifyToken, optionalAuth };
