@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { FiUser, FiSmartphone, FiTrash2, FiSearch, FiStar, FiActivity } from 'react-icons/fi';
+import { FiUser, FiSmartphone, FiTrash2, FiSearch, FiStar, FiActivity, FiArrowLeft } from 'react-icons/fi';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
@@ -12,18 +12,22 @@ const Watchlist = () => {
     const [players, setPlayers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const limit = 6;
 
     useEffect(() => {
         if (user) {
             fetchInWatchlist();
         }
-    }, [user]);
+    }, [user, currentPage]); // Re-fetch on page change
 
     const fetchInWatchlist = async () => {
         setLoading(true);
         try {
-            const res = await api.get(`/watchlist/${user.id}`);
+            const res = await api.get(`/watchlist/${user.id}?page=${currentPage}&limit=${limit}`);
             setPlayers(res.data.players || []);
+            setTotalPages(res.data.totalPages || 1);
         } catch (error) {
             console.error("Failed to fetch watchlist", error);
         } finally {
@@ -162,7 +166,7 @@ const Watchlist = () => {
                         variants={containerVariants}
                         initial="hidden"
                         animate="visible"
-                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
                     >
                         <AnimatePresence mode='popLayout'>
                             {filteredPlayers.map(player => (
@@ -209,20 +213,87 @@ const Watchlist = () => {
                                                 {player.name}
                                             </h3>
 
-                                            <div className="flex flex-wrap gap-2 justify-center mt-2">
-                                                <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider uppercase border ${getRoleBadgeStyle(player.role)}`}>
-                                                    {player.role}
-                                                </span>
-                                                {player.Team && (
-                                                    <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider uppercase border border-gray-200 bg-gray-50 text-gray-600">
-                                                        {player.Team.short_name}
+                                            <div className="flex flex-col gap-1 mt-2 w-full px-2">
+                                                {/* Role Badge */}
+                                                <div className="flex justify-center">
+                                                    <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider uppercase border ${getRoleBadgeStyle(player.role)}`}>
+                                                        {player.role}
                                                     </span>
+                                                </div>
+
+                                                {/* Auction Specific Badges */}
+                                                {player.auctions && player.auctions.length > 0 ? (
+                                                    <div className="flex flex-col gap-2 mt-2">
+                                                        {player.auctions.map((auc, idx) => (
+                                                            <div key={idx} className="flex flex-col gap-1 bg-gray-50 p-2 rounded-xl border border-gray-100 hover:border-gray-200 transition-colors">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center gap-2 overflow-hidden">
+                                                                        {auc.auction_image ? (
+                                                                            <img src={`http://localhost:5000/${auc.auction_image.replace(/\\/g, '/')}`} className="w-5 h-5 object-contain rounded-full bg-white border border-gray-100" title={auc.auction_name} />
+                                                                        ) : (
+                                                                            <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-[8px] font-bold text-blue-600">A</div>
+                                                                        )}
+                                                                        <span className="text-xs font-bold text-gray-700 truncate" title={auc.auction_name}>{auc.auction_name}</span>
+                                                                    </div>
+
+                                                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide border ${auc.status === 'Sold' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                                        auc.status === 'Unsold' ? 'bg-red-50 text-red-700 border-red-200' :
+                                                                            'bg-gray-50 text-gray-600 border-gray-200'
+                                                                        }`}>
+                                                                        {auc.status}
+                                                                    </span>
+                                                                </div>
+
+                                                                {(auc.status === 'Sold' || auc.team) && (
+                                                                    <div className="flex items-center justify-between pl-7">
+                                                                        <div className="flex items-center gap-1.5">
+                                                                            {auc.team_image ? (
+                                                                                <img src={`http://localhost:5000/${auc.team_image.replace(/\\/g, '/')}`} className="w-5 h-5 object-contain" title={auc.team} />
+                                                                            ) : (
+                                                                                <span className="text-[10px] font-bold text-gray-400">Team</span>
+                                                                            )}
+                                                                            <span className="text-xs font-semibold text-gray-800">{auc.team || 'Unknown'}</span>
+                                                                        </div>
+                                                                        {auc.sold_price > 0 && (
+                                                                            <span className="text-xs font-mono font-bold text-emerald-600">₹{auc.sold_price.toLocaleString()}</span>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-center mt-1">
+                                                        <span className="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded">Running in Global Pool</span>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
 
+                                        {/* Details Grid */}
+                                        <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-4 text-[10px] text-gray-500">
+                                            <div className="flex justify-between items-center border-b border-gray-100 pb-1">
+                                                <span>Age:</span>
+                                                <span className="font-semibold text-gray-700">
+                                                    {player.dob ? Math.floor((new Date() - new Date(player.dob)) / 31557600000) + ' Yrs' : '-'}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center border-b border-gray-100 pb-1">
+                                                <span>Mobile:</span>
+                                                <span className="font-semibold text-gray-700 truncate max-w-[80px]" title={player.mobile_number}>{player.mobile_number || '-'}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center border-b border-gray-100 pb-1">
+                                                <span>Batting:</span>
+                                                <span className="font-semibold text-gray-700 truncate max-w-[70px]" title={player.batting_type}>{player.batting_type || '-'}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center border-b border-gray-100 pb-1">
+                                                <span>Bowling:</span>
+                                                <span className="font-semibold text-gray-700 truncate max-w-[70px]" title={player.bowling_type}>{player.bowling_type || '-'}</span>
+                                            </div>
+                                        </div>
+
                                         {/* Stats Grid */}
-                                        <div className="grid grid-cols-3 gap-2 mt-6 mb-4">
+                                        <div className="grid grid-cols-3 gap-2 mt-3 mb-4">
                                             <div className="bg-gray-50 rounded-xl p-2 text-center border border-gray-100 group-hover:border-gray-200 transition-colors">
                                                 <div className="text-xs font-semibold text-gray-400 uppercase mb-0.5">Mat</div>
                                                 <div className="font-bold text-gray-800">{player.stats?.matches || 0}</div>
@@ -236,31 +307,42 @@ const Watchlist = () => {
                                                 <div className="font-bold text-gray-800">{player.stats?.wickets || 0}</div>
                                             </div>
                                         </div>
-
-                                        {/* Footer Info */}
-                                        <div className="flex items-center justify-between pt-4 border-t border-gray-100 text-xs font-medium">
-                                            <div className="flex items-center gap-1.5 text-gray-500">
-                                                <FiSmartphone className="text-gray-400" />
-                                                <span className="group-hover:text-gray-700 transition-colors">{player.mobile_number || 'N/A'}</span>
-                                            </div>
-
-                                            {player.sold_price ? (
-                                                <div className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
-                                                    <FiActivity />
-                                                    <span>₹{player.sold_price.toLocaleString()}</span>
-                                                </div>
-                                            ) : (
-                                                <div className="text-gray-400 bg-gray-50 px-2 py-1 rounded-lg opacity-0">
-                                                    {/* Placeholder to keep layout consistent or remove entirely */}
-                                                    -
-                                                </div>
-                                            )}
-                                        </div>
                                     </div>
                                 </motion.div>
                             ))}
                         </AnimatePresence>
                     </motion.div>
+                )}
+
+                {/* Pagination Controls */}
+                {!loading && players.length > 0 && totalPages > 1 && (
+                    <div className="flex justify-center mt-10 gap-3 items-center pb-10">
+                        <button
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50 hover:border-blue-300 hover:text-blue-600 transition-all shadow-sm group"
+                        >
+                            <FiArrowLeft className="group-hover:-translate-x-0.5 transition-transform" />
+                        </button>
+                        <div className="flex gap-1 bg-white p-1.5 rounded-xl border border-gray-100 shadow-sm items-center">
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                <button
+                                    key={page}
+                                    onClick={() => setCurrentPage(page)}
+                                    className={`w-9 h-9 rounded-lg text-sm font-bold transition-all ${currentPage === page ? 'bg-gray-900 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+                                >
+                                    {page}
+                                </button>
+                            ))}
+                        </div>
+                        <button
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages}
+                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50 hover:border-blue-300 hover:text-blue-600 transition-all shadow-sm group"
+                        >
+                            <FiArrowLeft className="rotate-180 group-hover:translate-x-0.5 transition-transform" />
+                        </button>
+                    </div>
                 )}
             </div>
         </Layout>

@@ -1,4 +1,4 @@
-const { Watchlist, Player, Team, AuctionPlayer } = require('../models');
+const { Watchlist, Player, Team, AuctionPlayer, Auction } = require('../models');
 const { getPlayerStats } = require('../utils/statsHelper');
 
 exports.addToWatchlist = async (req, res) => {
@@ -50,24 +50,66 @@ exports.getWatchlist = async (req, res) => {
             return res.status(400).json({ message: 'User ID is required' });
         }
 
-        const watchlist = await Watchlist.findAll({
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = (page - 1) * limit;
+
+        const { count, rows } = await Watchlist.findAndCountAll({
             where: { user_id: userId },
             include: [{
-                model: Player
-            }]
+                model: Player,
+                include: [{
+                    model: AuctionPlayer,
+                    include: [
+                        { model: Auction, attributes: ['name', 'status', 'image_path'] },
+                        { model: Team, attributes: ['name', 'short_name', 'image_path'] }
+                    ]
+                }]
+            }],
+            limit,
+            offset,
+            distinct: true
         });
 
-        // We might want to enrich this with current Auction status (Sold/Unsold) if not directly on Player
-        // But Player model usually has status. Let's return the simplified list.
-
-
-        const players = await Promise.all(watchlist.map(async item => {
+        const players = await Promise.all(rows.map(async item => {
             const p = item.Player.toJSON();
             const stats = await getPlayerStats(p.id);
-            return { ...p, stats };
+
+            // Format Auction Data
+            const auctionData = (p.AuctionPlayers || []).map(ap => ({
+                auction_name: ap.Auction ? ap.Auction.name : 'Unknown Auction',
+                auction_image: ap.Auction ? ap.Auction.image_path : null,
+                auction_status: ap.Auction ? ap.Auction.status : 'Unknown',
+                status: ap.status,
+                sold_price: ap.sold_price,
+                team: ap.Team ? ap.Team.short_name : null,
+                team_image: ap.Team ? ap.Team.image_path : null,
+                is_owner: ap.is_owner
+            }));
+
+            // Consolidate status for display (if requested simple view) or just pass array
+            // User requested "different auctions", so passing the array is best.
+            // However, to keep backward compatibility with the current simplified view:
+            // We can set root 'status' to the most recent active auction status, BUT
+            // it is better to return the full list.
+
+            return {
+                ...p,
+                stats,
+                auctions: auctionData,
+                // Fallback for simple display: Use the latest auction entry
+                status: auctionData.length > 0 ? auctionData[0].status : null,
+                sold_price: auctionData.length > 0 ? auctionData[0].sold_price : null,
+                Team: auctionData.length > 0 && auctionData[0].team ? { short_name: auctionData[0].team } : null
+            };
         }));
 
-        res.json({ players });
+        res.json({
+            players,
+            totalPages: Math.ceil(count / limit),
+            currentPage: page,
+            totalItems: count
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server Error' });

@@ -260,22 +260,22 @@ const Players = () => {
         setEditId(player.id);
         const playerTeamId = player.Team ? player.Team.id : (player.team_id || '');
         setFormData({
-            name: player.name,
-            role: player.role,
+            name: player.name || '',
+            role: player.role || 'Batsman',
             dob: player.dob ? player.dob.split('T')[0] : '',
-            mobile_number: player.mobile_number,
-            father_name: player.father_name,
-            batting_type: player.batting_type,
-            bowling_type: player.bowling_type,
-            tshirt_size: player.tshirt_size,
-            trouser_size: player.trouser_size,
-            notes: player.notes,
-            payment_transaction_id: player.payment_transaction_id,
+            mobile_number: player.mobile_number || '',
+            father_name: player.father_name || '',
+            batting_type: player.batting_type || 'Right Hand',
+            bowling_type: player.bowling_type || 'Right Arm Fast',
+            tshirt_size: player.tshirt_size || '',
+            trouser_size: player.trouser_size || '',
+            notes: player.notes || '',
+            payment_transaction_id: player.payment_transaction_id || '',
             is_owner: player.is_owner ? 'true' : 'false',
             team_id: playerTeamId,
-            points: player.points,
-            jersey_no: player.jersey_no || '',
-            player_link: player.player_link,
+            points: player.points || 0,
+            jersey_no: player.preferred_jersey_no || player.jersey_no || '',
+            player_link: player.player_link || '',
             image: null,
             payment_screenshot: null
         });
@@ -834,26 +834,32 @@ const Players = () => {
                                                         <input name="trouser_size" value={formData.trouser_size} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800" placeholder="30, 32, 34" />
                                                     </div>
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Status (Owner/Icon)</label>
-                                                        <select name="is_owner" value={formData.is_owner} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800">
-                                                            <option value="false">No</option>
-                                                            <option value="true">Yes</option>
-                                                        </select>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Team Assignment</label>
-                                                        <select name="team_id" value={formData.team_id} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800">
-                                                            <option value="">Select Team</option>
-                                                            {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Base Points / Price</label>
-                                                    <input type="number" name="points" value={formData.points} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800" />
-                                                </div>
+
+                                                {/* Auction Specific Fields - Only show within an Auction Context */}
+                                                {auctionId && (
+                                                    <>
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Status (Owner/Icon)</label>
+                                                                <select name="is_owner" value={formData.is_owner} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800">
+                                                                    <option value="false">No</option>
+                                                                    <option value="true">Yes</option>
+                                                                </select>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Team Assignment</label>
+                                                                <select name="team_id" value={formData.team_id} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800">
+                                                                    <option value="">Select Team</option>
+                                                                    {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Base Points / Price</label>
+                                                            <input type="number" name="points" value={formData.points} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800" />
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
                                         </FormSection>
                                     </div>
