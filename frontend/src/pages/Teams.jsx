@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiPlus, FiUsers, FiX, FiArrowLeft, FiEdit, FiTrash2, FiImage, FiHash } from 'react-icons/fi';
+import { FiPlus, FiUsers, FiX, FiArrowLeft, FiEdit, FiTrash2, FiImage, FiHash, FiDollarSign } from 'react-icons/fi';
 import api from '../api/axios';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -10,6 +10,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 import PlayerInfoModal from '../components/PlayerInfoModal';
+import WalletModal from '../components/WalletModal';
 
 const FormSection = ({ title, children }) => (
     <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
@@ -30,6 +31,7 @@ const Teams = () => {
 
     // Squad View State
     const [viewSquad, setViewSquad] = useState(null);
+    const [viewWallet, setViewWallet] = useState(null);
     const [infoPlayer, setInfoPlayer] = useState(null);
 
     const [formData, setFormData] = useState({
@@ -403,6 +405,12 @@ const Teams = () => {
                             >
                                 View Squad
                             </button>
+                            <button
+                                onClick={() => setViewWallet(team.id)}
+                                className="mt-2 w-full py-2 rounded-lg border border-gray-200 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <FiDollarSign /> Wallet
+                            </button>
                         </div>
                     ))
                     }
@@ -637,6 +645,13 @@ const Teams = () => {
                 onConfirm={confirmDelete}
                 title="Delete Team?"
                 message={`Are you sure you want to delete "${teamToDelete?.name}"?`}
+            />
+
+            {/* Wallet Modal */}
+            <WalletModal
+                teamId={viewWallet}
+                isOpen={!!viewWallet}
+                onClose={() => setViewWallet(null)}
             />
         </Layout >
     );

@@ -154,3 +154,69 @@ exports.getAllTeams = async (req, res) => {
         res.status(500).json({ message: 'Error fetching teams' });
     }
 };
+// Get Team Wallet Details
+exports.getTeamWalletDetails = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { AuctionPlayer, Player } = require('../models');
+
+        const team = await Team.findByPk(id, {
+            attributes: ['id', 'name', 'short_name', 'purse_remaining', 'players_per_team', 'image_path']
+        });
+
+        if (!team) return res.status(404).json({ message: 'Team not found' });
+
+        // Fetch Sold Players
+        const soldPlayers = await AuctionPlayer.findAll({
+            where: {
+                team_id: id,
+                status: 'Sold'
+            },
+            include: [{
+                model: Player,
+                attributes: ['id', 'name', 'role', 'image_path']
+            }],
+            order: [['updatedAt', 'DESC']] // Most recent purchase first
+        });
+
+        // Calculate Stats
+        let totalSpent = 0;
+        const roleSplit = {};
+        const history = [];
+
+        soldPlayers.forEach(ap => {
+            const price = parseFloat(ap.sold_price || 0);
+            totalSpent += price;
+
+            const role = ap.Player?.role || 'Unknown';
+            if (!roleSplit[role]) roleSplit[role] = 0;
+            roleSplit[role] += price;
+
+            history.push({
+                player_name: ap.Player?.name || 'Unknown',
+                role: role,
+                amount: price,
+                time: ap.updatedAt
+            });
+        });
+
+        const totalBudget = parseFloat(team.purse_remaining || 0) + totalSpent;
+
+        res.json({
+            team: team,
+            summary: {
+                total_budget: totalBudget,
+                total_spent: totalSpent,
+                remaining: team.purse_remaining,
+                squad_count: soldPlayers.length,
+                total_slots: team.players_per_team
+            },
+            role_split: roleSplit,
+            history: history
+        });
+
+    } catch (error) {
+        console.error("Error fetching wallet details:", error);
+        res.status(500).json({ message: 'Error fetching wallet details' });
+    }
+};
