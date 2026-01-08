@@ -15,6 +15,7 @@ const FantasyPlayer = require('./FantasyPlayer')(sequelize);
 const Notification = require('./Notification')(sequelize);
 const ActivityLog = require('./ActivityLog')(sequelize);
 const Message = require('./Message')(sequelize);
+const Watchlist = require('./Watchlist')(sequelize);
 
 // Associations
 
@@ -138,6 +139,11 @@ TeamShortlist.belongsTo(Team, { foreignKey: 'team_id' });
 TeamShortlist.belongsTo(Player, { foreignKey: 'player_id' });
 Team.hasMany(TeamShortlist, { foreignKey: 'team_id', onDelete: 'CASCADE' });
 
+// Watchlist Associations
+Watchlist.belongsTo(User, { foreignKey: 'user_id' });
+Watchlist.belongsTo(Player, { foreignKey: 'player_id' });
+User.hasMany(Watchlist, { foreignKey: 'user_id', onDelete: 'CASCADE' });
+
 
 module.exports = {
     sequelize,
@@ -157,5 +163,7 @@ module.exports = {
     FantasyPlayer,
     Notification,
     ActivityLog,
-    Message
+    ActivityLog,
+    Message,
+    Watchlist
 };

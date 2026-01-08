@@ -573,6 +573,15 @@ exports.markUnsold = async (req, res) => {
 exports.deletePlayer = async (req, res) => {
     try {
         const { id } = req.params;
+        const { AuctionPlayer, Watchlist } = require('../models');
+
+        // 1. Remove from Watchlists
+        await Watchlist.destroy({ where: { player_id: id } });
+
+        // 2. Remove from AuctionPlayer (current & history)
+        await AuctionPlayer.destroy({ where: { player_id: id } });
+
+        // 3. Finally Delete Global Player
         await Player.destroy({ where: { id } });
 
         const io = req.app.get('io');
@@ -580,7 +589,8 @@ exports.deletePlayer = async (req, res) => {
 
         res.json({ message: 'Player deleted successfully' });
     } catch (error) {
-        res.status(500).json({ message: 'Error deleting player' });
+        console.error("Error deleting player:", error);
+        res.status(500).json({ message: 'Error deleting player', error: error.message });
     }
 };
 

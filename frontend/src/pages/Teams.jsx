@@ -434,7 +434,7 @@ const Teams = () => {
                                     {/* Right Column: Image Upload */}
                                     <div className="flex flex-col h-full">
                                         <div className="flex-1 border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer hover:border-deep-blue hover:bg-blue-50 transition-all relative group bg-gray-50 overflow-hidden min-h-[200px]">
-                                            <input required={!isEdit && !previewImage} type="file" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                            <input required={!isEdit && !previewImage} type="file" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" />
                                             {previewImage ? (
                                                 <>
                                                     <img src={previewImage} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" />

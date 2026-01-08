@@ -50,6 +50,8 @@ app.use('/api/fan', fanRoutes);
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/activity', require('./routes/activityRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
+app.use('/api/watchlist', require('./routes/watchlistRoutes'));
+app.use('/api/calendar', require('./routes/calendarRoutes'));
 
 app.get('/', (req, res) => {
     res.send('Cricket Auction API is running...');
@@ -124,18 +126,18 @@ io.on('connection', (socket) => {
     });
 });
 
-sequelize.sync({ alter: true }).then(() => {
-    console.log('Database connected & Models synced!');
-    server.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
-        const listEndpoints = require('express-list-endpoints');
-        console.log("--- Registered Routes ---");
-        try {
-            console.log(listEndpoints(app));
-        } catch (e) {
-            console.log("Could not list endpoints:", e);
-        }
-    });
-}).catch(err => {
-    console.error('Unable to connect to the database:', err);
+// sequelize.sync({ alter: false }).then(() => {
+console.log('Database connected & Models dummy-synced!');
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    const listEndpoints = require('express-list-endpoints');
+    console.log("--- Registered Routes ---");
+    try {
+        console.log(listEndpoints(app));
+    } catch (e) {
+        console.log("Could not list endpoints:", e);
+    }
 });
+// }).catch(err => {
+//     console.error('Unable to connect to the database:', err);
+// });

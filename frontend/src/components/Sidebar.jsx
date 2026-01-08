@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FiHome, FiGrid, FiUsers, FiLogOut, FiSettings, FiActivity, FiPieChart, FiAward, FiSun, FiMoon, FiChevronDown, FiChevronUp, FiLock, FiX, FiList, FiTarget } from 'react-icons/fi';
+import { FiHome, FiGrid, FiUsers, FiLogOut, FiSettings, FiActivity, FiPieChart, FiAward, FiSun, FiMoon, FiChevronDown, FiChevronUp, FiLock, FiX, FiList, FiTarget, FiStar, FiCalendar } from 'react-icons/fi';
 import { FaTools } from 'react-icons/fa';
 import { useTheme } from '../context/ThemeContext';
 import Logo from './Logo';
@@ -12,6 +12,8 @@ const Sidebar = ({ isOpen, onClose, showTicker, toggleTicker }) => {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     const [openGroups, setOpenGroups] = useState({
+        main: true, // Default open
+        auction: false,
         analysis: false,
         data: false,
         utilities: false
@@ -22,9 +24,28 @@ const Sidebar = ({ isOpen, onClose, showTicker, toggleTicker }) => {
     };
 
     const menuGroups = [
-        { type: 'link', path: '/dashboard', label: 'Dashboard', icon: <FiHome /> },
-        { type: 'link', path: '/auctions', label: 'Auctions', icon: <FiGrid /> },
-        { type: 'link', path: '/players', label: 'Players', icon: <FiUsers /> },
+        {
+            type: 'group',
+            id: 'main',
+            label: 'Main',
+            icon: <FiHome />,
+            items: [
+                { path: '/dashboard', label: 'Dashboard', icon: <FiHome /> },
+                { path: '/calendar', label: 'Calendar', icon: <FiCalendar />, newTab: true },
+                { path: '/fanzone', label: 'Fan Zone', icon: <FiTarget /> },
+            ]
+        },
+        {
+            type: 'group',
+            id: 'auction',
+            label: 'Auction Center',
+            icon: <FiGrid />,
+            items: [
+                { path: '/auctions', label: 'Auctions', icon: <FiGrid /> },
+                { path: '/players', label: 'Players', icon: <FiUsers /> },
+                { path: '/watchlist', label: 'My Watchlist', icon: <FiStar /> },
+            ]
+        },
         {
             type: 'group',
             id: 'data',
@@ -46,8 +67,6 @@ const Sidebar = ({ isOpen, onClose, showTicker, toggleTicker }) => {
                 { path: '/compare', label: 'Play Comparison', icon: <FiUsers /> },
             ]
         },
-
-        { type: 'link', path: '/fanzone', label: 'Fan Zone', icon: <FiTarget /> },
         {
             type: 'group',
             id: 'utilities',
@@ -82,9 +101,9 @@ const Sidebar = ({ isOpen, onClose, showTicker, toggleTicker }) => {
                 ${isOpen ? 'translate-x-0' : '-translate-x-full'}
             `}>
                 <div className="p-6 flex items-center justify-between border-b border-white/10 shrink-0">
-                    <div className="flex items-center gap-3">
+                    <Link to="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                         <Logo className="w-12 h-12" textClassName="text-xl font-bold" />
-                    </div>
+                    </Link>
                 </div>
 
                 <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">

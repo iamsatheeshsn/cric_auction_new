@@ -19,6 +19,9 @@ import RegisterPage from './pages/RegisterPage';
 import FanZone from './pages/FanZone';
 import Tools from './pages/Tools';
 import Profile from './pages/Profile';
+import Watchlist from './pages/Watchlist';
+import CalendarPage from './pages/CalendarPage';
+
 
 import Settings from './pages/Settings';
 import MatchAnalytics from './pages/MatchAnalytics';
@@ -57,6 +60,8 @@ function App() {
                   <Route path="/teams/:auctionId" element={<ProtectedRoute><Teams /></ProtectedRoute>} />
                   <Route path="/players" element={<ProtectedRoute><Players /></ProtectedRoute>} />
                   <Route path="/players/:auctionId" element={<ProtectedRoute><Players /></ProtectedRoute>} />
+                  <Route path="/watchlist" element={<ProtectedRoute><Watchlist /></ProtectedRoute>} />
+                  <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
                   <Route path="/fixtures/:auctionId" element={<ProtectedRoute><Fixtures /></ProtectedRoute>} />
                   <Route path="/auction-room/:auctionId" element={<ProtectedRoute><AuctionRoom /></ProtectedRoute>} />
                   <Route path="/match-scoring/:fixtureId" element={<ProtectedRoute><MatchScoring /></ProtectedRoute>} />

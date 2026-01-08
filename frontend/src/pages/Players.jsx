@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Layout from '../components/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiPlus, FiUser, FiX, FiArrowLeft, FiTrash2, FiEdit, FiPrinter, FiRefreshCw, FiUpload, FiDownload, FiSearch, FiFilter, FiSmartphone, FiMoreVertical } from 'react-icons/fi';
+import { FiPlus, FiUser, FiX, FiArrowLeft, FiTrash2, FiEdit, FiPrinter, FiRefreshCw, FiUpload, FiDownload, FiSearch, FiFilter, FiSmartphone, FiMoreVertical, FiStar } from 'react-icons/fi';
 import api from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -63,6 +64,8 @@ const Players = () => {
 
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
+    const [watchlist, setWatchlist] = useState(new Set());
+    const { user } = useAuth();
     const [statusFilter, setStatusFilter] = useState('');
     const [previewImage, setPreviewImage] = useState(null);
 
@@ -85,7 +88,52 @@ const Players = () => {
 
         window.addEventListener('afterprint', handleAfterPrint);
         return () => window.removeEventListener('afterprint', handleAfterPrint);
+        window.addEventListener('afterprint', handleAfterPrint);
+        return () => window.removeEventListener('afterprint', handleAfterPrint);
     }, [limit]);
+
+    useEffect(() => {
+        if (user) {
+            fetchWatchlist();
+        }
+    }, [user]);
+
+    const fetchWatchlist = async () => {
+        try {
+            const res = await api.get(`/watchlist/${user.id}`);
+            const ids = new Set(res.data.players.map(p => p.id));
+            setWatchlist(ids);
+        } catch (error) {
+            console.error("Failed to fetch watchlist", error);
+        }
+    };
+
+    const toggleWatchlist = async (e, player) => {
+        e.stopPropagation();
+        if (!user) {
+            toast.error("Please login to use watchlist");
+            return;
+        }
+
+        try {
+            if (watchlist.has(player.id)) {
+                await api.delete(`/watchlist/${player.id}`, { data: { user_id: user.id } });
+                setWatchlist(prev => {
+                    const next = new Set(prev);
+                    next.delete(player.id);
+                    return next;
+                });
+                toast.success("Removed from watchlist");
+            } else {
+                await api.post('/watchlist', { user_id: user.id, player_id: player.id });
+                setWatchlist(prev => new Set(prev).add(player.id));
+                toast.success("Added to watchlist");
+            }
+        } catch (error) {
+            console.error("Watchlist action failed", error);
+            toast.error("Failed to update watchlist");
+        }
+    };
 
     const fetchAuctionDetails = async () => {
         try {
@@ -410,16 +458,26 @@ const Players = () => {
                             <div key={player.id} className={`group rounded-xl p-4 border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col relative overflow-hidden ${getRoleBgClass(player.role)}`}>
 
                                 {/* Top Right Actions */}
-                                {(player.status !== 'Sold' || !auctionId) && (auction?.status === 'Upcoming' || !auctionId) && (
-                                    <div className="absolute top-2 right-2 flex gap-1 transform translate-x-10 group-hover:translate-x-0 transition-transform duration-200 z-10">
-                                        <button onClick={(e) => { e.stopPropagation(); handleEdit(player); }} className="p-1.5 text-gray-400 hover:text-blue-600 bg-white/80 hover:bg-white rounded-lg shadow-sm border border-transparent hover:border-gray-200 transition-all" title="Edit">
-                                            <FiEdit size={14} />
-                                        </button>
-                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteClick(player); }} className="p-1.5 text-gray-400 hover:text-red-600 bg-white/80 hover:bg-white rounded-lg shadow-sm border border-transparent hover:border-gray-200 transition-all" title="Delete">
-                                            <FiTrash2 size={14} />
-                                        </button>
-                                    </div>
-                                )}
+                                <div className="absolute top-2 right-2 flex gap-1 z-10">
+                                    <button
+                                        onClick={(e) => toggleWatchlist(e, player)}
+                                        className={`p-1.5 rounded-lg shadow-sm border transition-all ${watchlist.has(player.id) ? 'bg-yellow-50 border-yellow-200 text-yellow-500 hover:bg-yellow-100' : 'bg-white/80 border-transparent hover:border-gray-200 text-gray-300 hover:text-yellow-400'}`}
+                                        title={watchlist.has(player.id) ? "Remove from Watchlist" : "Add to Watchlist"}
+                                    >
+                                        <FiStar size={14} fill={watchlist.has(player.id) ? "currentColor" : "none"} />
+                                    </button>
+
+                                    {(player.status !== 'Sold' || !auctionId) && (auction?.status === 'Upcoming' || !auctionId) && (
+                                        <div className="flex gap-1 transform translate-x-10 group-hover:translate-x-0 transition-transform duration-200">
+                                            <button onClick={(e) => { e.stopPropagation(); handleEdit(player); }} className="p-1.5 text-gray-400 hover:text-blue-600 bg-white/80 hover:bg-white rounded-lg shadow-sm border border-transparent hover:border-gray-200 transition-all" title="Edit">
+                                                <FiEdit size={14} />
+                                            </button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteClick(player); }} className="p-1.5 text-gray-400 hover:text-red-600 bg-white/80 hover:bg-white rounded-lg shadow-sm border border-transparent hover:border-gray-200 transition-all" title="Delete">
+                                                <FiTrash2 size={14} />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
 
                                 <div className="flex gap-4 items-center mb-3">
                                     <div onClick={() => setSelectedPlayer(player)} className="w-16 h-16 rounded-full bg-white overflow-hidden cursor-pointer border-2 border-white shadow-md group-hover:scale-105 transition-transform relative shrink-0">
@@ -488,7 +546,7 @@ const Players = () => {
                     </div>
 
                     {/* Table View for Print - Preserved Original Table */}
-                    <div className="hidden print:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden print:shadow-none print:border-0">
+                    < div className="hidden print:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden print:shadow-none print:border-0" >
                         <table className="w-full text-left">
                             <thead className="bg-gray-50 border-b border-gray-100 print:bg-white print:border-gray-300">
                                 <tr>
@@ -621,7 +679,7 @@ const Players = () => {
                                             type="file"
                                             accept=".csv"
                                             onChange={(e) => setImportFile(e.target.files[0])}
-                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50"
                                         />
                                         <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform text-gray-400 group-hover:text-deep-blue">
                                             <FiUpload className="text-xl" />
@@ -686,7 +744,7 @@ const Players = () => {
                                             <div className="md:col-span-3">
                                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Profile Photo</label>
                                                 <div className="border-2 border-dashed border-gray-300 rounded-xl aspect-square flex flex-col items-center justify-center text-center cursor-pointer hover:border-deep-blue hover:bg-blue-50 transition-all relative group bg-gray-50 overflow-hidden">
-                                                    <input type="file" onChange={(e) => handleFileChange(e, 'image')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                                    <input type="file" onChange={(e) => handleFileChange(e, 'image')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" />
                                                     {previewImage ? (
                                                         <>
                                                             <img src={previewImage} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" />
