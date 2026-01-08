@@ -35,6 +35,18 @@ module.exports = (sequelize) => {
             type: DataTypes.INTEGER,
             allowNull: false
         },
+        sold_timer_duration: {
+            type: DataTypes.INTEGER,
+            defaultValue: 0 // 0 = "No time limit"
+        },
+        min_squad_size: {
+            type: DataTypes.INTEGER,
+            defaultValue: 1
+        },
+        max_squad_size: {
+            type: DataTypes.INTEGER,
+            defaultValue: 25
+        },
         image_path: {
             type: DataTypes.STRING,
             allowNull: true // Optional image

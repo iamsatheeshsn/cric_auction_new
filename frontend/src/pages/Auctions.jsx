@@ -29,6 +29,9 @@ const Auctions = () => {
         points_per_team: 100,
         min_bid: 100,
         bid_increase_by: 50,
+        sold_timer_duration: 0,
+        min_squad_size: 1,
+        max_squad_size: 25,
         image: null
     });
     const [previewImage, setPreviewImage] = useState(null);
@@ -41,7 +44,7 @@ const Auctions = () => {
 
     const fetchAuctions = async () => {
         try {
-            const res = await api.get(`/auctions?page=${currentPage}&limit=9&search=${search}`);
+            const res = await api.get(`/auctions?page=${currentPage}&limit=6&search=${search}`);
             setAuctions(res.data.auctions);
             setTotalPages(res.data.totalPages);
         } catch (error) {
@@ -101,6 +104,9 @@ const Auctions = () => {
             points_per_team: 100,
             min_bid: 100,
             bid_increase_by: 50,
+            sold_timer_duration: 0,
+            min_squad_size: 1,
+            max_squad_size: 25,
             image: null
         });
         setPreviewImage(null);
@@ -117,6 +123,9 @@ const Auctions = () => {
             points_per_team: auction.points_per_team,
             min_bid: auction.min_bid,
             bid_increase_by: auction.bid_increase_by,
+            sold_timer_duration: auction.sold_timer_duration || 0,
+            min_squad_size: auction.min_squad_size || 1,
+            max_squad_size: auction.max_squad_size || 25,
             image: null // New image optional
         });
         if (auction.image_path) {
@@ -424,74 +433,77 @@ const Auctions = () => {
                             </div>
 
                             <form onSubmit={handleSubmit} className="p-8 flex flex-col gap-6">
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-                                    {/* Left Column: General Info */}
-                                    <div className="space-y-6">
-                                        <FormSection title="General Information">
-                                            <div className="space-y-5">
+                                    {/* Left Column: General Info (Cost 7 cols) */}
+                                    <div className="lg:col-span-7 space-y-5">
+                                        <FormSection title="General Details">
+                                            <div className="space-y-4">
                                                 <div>
                                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Auction Name *</label>
-                                                    <input required name="name" value={formData.name} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800" placeholder="e.g. IPL 2025 Mega Auction" />
+                                                    <input required name="name" value={formData.name} onChange={handleInputChange} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800" placeholder="e.g. IPL 2025 Mega Auction" />
                                                 </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div>
+                                                <div className="grid grid-cols-3 gap-3">
+                                                    <div className="col-span-1">
                                                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Date *</label>
                                                         <div className="relative">
-                                                            <FiCalendar className="absolute left-3 top-3 text-gray-400" />
-                                                            <input required type="date" name="auction_date" value={formData.auction_date} onChange={handleInputChange} className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800" />
+                                                            <FiCalendar className="absolute left-2.5 top-2.5 text-gray-400" />
+                                                            <input required type="date" name="auction_date" value={formData.auction_date} onChange={handleInputChange} className="w-full pl-8 pr-2 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800 text-sm" />
                                                         </div>
                                                     </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Location *</label>
+                                                    <div className="col-span-1">
+                                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Location</label>
                                                         <div className="relative">
-                                                            <FiMapPin className="absolute left-3 top-3 text-gray-400" />
-                                                            <input required name="place" value={formData.place} onChange={handleInputChange} className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800" placeholder="e.g. Mumbai" />
+                                                            <FiMapPin className="absolute left-2.5 top-2.5 text-gray-400" />
+                                                            <input required name="place" value={formData.place} onChange={handleInputChange} className="w-full pl-8 pr-2 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800 text-sm" placeholder="City" />
                                                         </div>
+                                                    </div>
+                                                    <div className="col-span-1">
+                                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Sport</label>
+                                                        <select name="type" value={formData.type} onChange={handleInputChange} className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800 text-sm">
+                                                            <option value="Cricket">Cricket</option>
+                                                            <option value="Football">Football</option>
+                                                            <option value="Kabaddi">Kabaddi</option>
+                                                            <option value="Volleyball">Volleyball</option>
+                                                        </select>
                                                     </div>
                                                 </div>
+                                            </div>
+                                        </FormSection>
+
+                                        <FormSection title="Rules & Limits">
+                                            <div className="grid grid-cols-3 gap-3">
                                                 <div>
-                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Sport Type</label>
-                                                    <select name="type" value={formData.type} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800">
-                                                        <option value="Cricket">Cricket</option>
-                                                        <option value="Football">Football</option>
-                                                        <option value="Kabaddi">Kabaddi</option>
-                                                        <option value="Volleyball">Volleyball</option>
-                                                    </select>
+                                                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Points/Team</label>
+                                                    <input required type="number" name="points_per_team" value={formData.points_per_team} onChange={handleInputChange} className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800 text-sm" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Min Bid</label>
+                                                    <input required type="number" name="min_bid" value={formData.min_bid} onChange={handleInputChange} className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800 text-sm" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Bid Incr.</label>
+                                                    <input required type="number" name="bid_increase_by" value={formData.bid_increase_by} onChange={handleInputChange} className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800 text-sm" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Squad Max</label>
+                                                    <input required type="number" name="max_squad_size" value={formData.max_squad_size} onChange={handleInputChange} className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800 text-sm" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Squad Min</label>
+                                                    <input required type="number" name="min_squad_size" value={formData.min_squad_size} onChange={handleInputChange} className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800 text-sm" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Timer (s)</label>
+                                                    <input required type="number" name="sold_timer_duration" value={formData.sold_timer_duration} onChange={handleInputChange} className="w-full px-2 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800 text-sm" title="0 = No Timer" />
                                                 </div>
                                             </div>
                                         </FormSection>
                                     </div>
 
-                                    {/* Right Column: Rules & Image */}
-                                    <div className="space-y-6 flex flex-col h-full">
-                                        <FormSection title="Bidding Rules">
-                                            <div className="grid grid-cols-3 gap-4">
-                                                <div>
-                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Points/Team</label>
-                                                    <div className="relative">
-                                                        <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-xs">Pts</span>
-                                                        <input required type="number" name="points_per_team" value={formData.points_per_team} onChange={handleInputChange} className="w-full pl-9 pr-2 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800" />
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Min Bid</label>
-                                                    <div className="relative">
-                                                        <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-xs">₹</span>
-                                                        <input required type="number" name="min_bid" value={formData.min_bid} onChange={handleInputChange} className="w-full pl-6 pr-2 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800" />
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Incr.</label>
-                                                    <div className="relative">
-                                                        <span className="absolute left-3 top-2.5 text-gray-400 font-bold text-xs">+</span>
-                                                        <input required type="number" name="bid_increase_by" value={formData.bid_increase_by} onChange={handleInputChange} className="w-full pl-6 pr-2 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-deep-blue/20 focus:border-deep-blue outline-none transition-all font-medium text-gray-800" />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </FormSection>
-
-                                        <div className="flex-1 border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer hover:border-deep-blue hover:bg-blue-50 transition-all relative group bg-gray-50 overflow-hidden min-h-[200px]">
+                                    {/* Right Column: Image (Cost 5 cols) */}
+                                    <div className="lg:col-span-5 flex flex-col h-full">
+                                        <div className="flex-1 border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer hover:border-deep-blue hover:bg-blue-50 transition-all relative group bg-gray-50 overflow-hidden h-full min-h-[250px]">
                                             <input type="file" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" />
                                             {previewImage ? (
                                                 <>
@@ -503,11 +515,11 @@ const Auctions = () => {
                                                 </>
                                             ) : (
                                                 <>
-                                                    <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform relative z-20">
-                                                        <FiImage size={24} className="text-deep-blue" />
+                                                    <div className="w-14 h-14 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform relative z-20">
+                                                        <FiImage size={28} className="text-deep-blue" />
                                                     </div>
-                                                    <p className="text-sm font-medium text-gray-700 relative z-20">Upload Auction Banner</p>
-                                                    <p className="text-xs text-gray-400 mt-1 relative z-20">PNG, JPG up to 5MB</p>
+                                                    <p className="text-sm font-bold text-gray-700 relative z-20">Upload Tournament Banner</p>
+                                                    <p className="text-xs text-gray-400 mt-1 relative z-20 max-w-[200px]">Optimal size: 1200x400px<br />Supported: JPG, PNG</p>
                                                 </>
                                             )}
                                         </div>
@@ -532,9 +544,9 @@ const Auctions = () => {
                                 </div>
                             </form>
                         </motion.div>
-                    </div>
+                    </div >
                 )}
-            </AnimatePresence>
+            </AnimatePresence >
 
             <ConfirmationModal
                 isOpen={deleteModalOpen}

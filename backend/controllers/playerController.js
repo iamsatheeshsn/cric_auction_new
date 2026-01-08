@@ -536,10 +536,16 @@ exports.markSold = async (req, res) => {
     try {
         const { id } = req.params; // Global Player ID
         const { team_id, sod_price } = req.body; // sod_price = final bid amount
-        const { AuctionPlayer, Player, Team } = require('../models');
+        const { AuctionPlayer, Player, Team, Auction } = require('../models');
 
-        const team = await Team.findByPk(team_id);
+        const team = await Team.findByPk(team_id, {
+            include: [{ model: Auction }]
+        });
         if (!team) return res.status(404).json({ message: 'Team not found' });
+
+        const auction = team.Auction;
+        // Use Auction Limit or Team Limit (if distinct), defaulting to Auction rule
+        const maxSquadSize = auction.max_squad_size || team.players_per_team || 25;
 
         // Find AuctionPlayer for this player and this team's auction
         const auctionPlayer = await AuctionPlayer.findOne({
@@ -557,8 +563,9 @@ exports.markSold = async (req, res) => {
         // 1. Check Player Count Limit
         // Count how many players this team has in this auction
         const currentPlayerCount = await AuctionPlayer.count({ where: { team_id, auction_id: team.auction_id } });
-        if (currentPlayerCount >= team.players_per_team) {
-            return res.status(400).json({ message: `Team full! Max ${team.players_per_team} players allowed.` });
+
+        if (currentPlayerCount >= maxSquadSize) {
+            return res.status(400).json({ message: `Team full! Max ${maxSquadSize} players allowed.` });
         }
 
         // 2. Check Purse Limit
@@ -574,8 +581,6 @@ exports.markSold = async (req, res) => {
         auctionPlayer.status = 'Sold';
         auctionPlayer.team_id = team_id;
         auctionPlayer.sold_price = sod_price;
-        await auctionPlayer.save();
-
         await auctionPlayer.save();
 
         const io = req.app.get('io');

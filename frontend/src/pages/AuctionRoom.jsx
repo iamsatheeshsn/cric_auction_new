@@ -687,6 +687,11 @@ const AuctionRoom = () => {
                                                     </div>
                                                 </div>
                                             </div>
+                                            <SoldTimer
+                                                duration={auction?.sold_timer_duration || 0}
+                                                resetTrigger={currentBid}
+                                                onTimeUp={() => { }}
+                                            />
                                         </div>
 
                                         {/* Bidding Controls Area */}
@@ -753,6 +758,13 @@ const AuctionRoom = () => {
                                                         <div className="grid grid-cols-1 2xl:grid-cols-2 gap-2">
                                                             {teams.map(team => {
                                                                 const canBid = team.purse_remaining >= currentBid;
+
+                                                                // Calculate Squad Count
+                                                                const teamSquadCount = soldPlayers.filter(p => p.team_id === team.id || (p.Team?.id === team.id)).length;
+                                                                // Use Auction Limit or Team Default
+                                                                const maxSquad = auction?.max_squad_size || team.players_per_team || 25;
+                                                                const isFull = teamSquadCount >= maxSquad;
+
                                                                 const isCurrent = currentBidder?.id === team.id;
 
                                                                 return (
@@ -762,7 +774,7 @@ const AuctionRoom = () => {
                                                                             flex items-center gap-2 p-2 rounded-xl border transition-all
                                                                             ${isCurrent
                                                                                 ? 'bg-green-50 border-green-500 shadow-green-100 shadow-sm'
-                                                                                : canBid
+                                                                                : (canBid && !isFull)
                                                                                     ? 'bg-white border-slate-200 hover:border-blue-300'
                                                                                     : 'bg-slate-50 border-slate-100 opacity-60 grayscale'
                                                                             }
@@ -774,7 +786,9 @@ const AuctionRoom = () => {
 
                                                                         <div className="flex flex-col flex-1 min-w-0">
                                                                             <span className={`text-[10px] font-black truncate ${isCurrent ? 'text-green-700' : 'text-slate-700'}`}>{team.short_name}</span>
-                                                                            <span className="text-[9px] font-bold text-slate-400">₹{team.purse_remaining.toLocaleString()}</span>
+                                                                            <span className="text-[9px] font-bold text-slate-400">
+                                                                                {isFull ? <span className="text-red-500">FULL</span> : `₹${team.purse_remaining.toLocaleString()}`}
+                                                                            </span>
                                                                         </div>
 
                                                                         {isCurrent ? (
@@ -791,10 +805,10 @@ const AuctionRoom = () => {
                                                                                     setCurrentBidder(team);
                                                                                     syncLiveBid(currentBid, team.id);
                                                                                 }}
-                                                                                disabled={!canBid}
+                                                                                disabled={!canBid || isFull}
                                                                                 className={`
                                                                                     shrink-0 whitespace-nowrap px-2 py-1 text-[9px] font-bold rounded-lg transition-colors uppercase tracking-wide
-                                                                                    ${canBid
+                                                                                    ${(canBid && !isFull)
                                                                                         ? 'bg-blue-100 hover:bg-blue-200 text-blue-700'
                                                                                         : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                                                                     }
@@ -1110,7 +1124,7 @@ const AuctionRoom = () => {
                                     </div>
                                     <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
                                         <p className="text-xs font-bold uppercase text-blue-600 mb-1">Squad Size</p>
-                                        <p className="text-2xl font-black text-slate-800">{soldPlayers.filter(p => p.team_id === selectedTeamViewer.id || (p.Team?.id === selectedTeamViewer.id)).length} / {selectedTeamViewer.players_per_team}</p>
+                                        <p className="text-2xl font-black text-slate-800">{soldPlayers.filter(p => p.team_id === selectedTeamViewer.id || (p.Team?.id === selectedTeamViewer.id)).length} / {auction?.max_squad_size || selectedTeamViewer.players_per_team}</p>
                                     </div>
                                 </div>
 
@@ -1157,6 +1171,45 @@ const AuctionRoom = () => {
                 />
             </div>
         </div >
+    );
+};
+
+// Internal Timer Component
+const SoldTimer = ({ duration, onTimeUp, resetTrigger }) => {
+    const [timeLeft, setTimeLeft] = useState(duration);
+
+    useEffect(() => {
+        setTimeLeft(duration);
+    }, [duration, resetTrigger]);
+
+    useEffect(() => {
+        if (timeLeft <= 0 || !duration) return;
+
+        const interval = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(interval);
+                    if (onTimeUp) onTimeUp();
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [timeLeft, duration, onTimeUp]);
+
+    if (!duration || duration <= 0) return null;
+
+    return (
+        <div className={`
+            absolute top-4 right-4 z-20 flex flex-col items-center justify-center 
+            w-20 h-20 rounded-full border-4 shadow-xl bg-white
+            ${timeLeft <= 5 ? 'border-red-500 animate-pulse text-red-600' : 'border-blue-500 text-blue-800'}
+        `}>
+            <span className="text-3xl font-black leading-none">{timeLeft}</span>
+            <span className="text-[8px] font-bold uppercase">Seconds</span>
+        </div>
     );
 };
 

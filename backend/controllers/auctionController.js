@@ -20,7 +20,10 @@ exports.createAuction = async (req, res) => {
             type,
             points_per_team,
             min_bid,
-            bid_increase_by
+            bid_increase_by,
+            sold_timer_duration,
+            min_squad_size,
+            max_squad_size
         } = req.body;
 
         const newAuction = await Auction.create({
@@ -31,6 +34,9 @@ exports.createAuction = async (req, res) => {
             points_per_team,
             min_bid,
             bid_increase_by,
+            sold_timer_duration: sold_timer_duration || 0,
+            min_squad_size: min_squad_size || 1,
+            max_squad_size: max_squad_size || 25,
             image_path: imagePath
         });
 
@@ -53,7 +59,7 @@ exports.createAuction = async (req, res) => {
 exports.updateAuction = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, auction_date, place, type, points_per_team, min_bid, bid_increase_by } = req.body;
+        const { name, auction_date, place, type, points_per_team, min_bid, bid_increase_by, sold_timer_duration, min_squad_size, max_squad_size } = req.body;
         const imagePath = req.file ? `uploads/${req.file.filename}` : undefined;
 
         const auction = await Auction.findByPk(id);
@@ -66,6 +72,9 @@ exports.updateAuction = async (req, res) => {
         auction.points_per_team = points_per_team || auction.points_per_team;
         auction.min_bid = min_bid || auction.min_bid;
         auction.bid_increase_by = bid_increase_by || auction.bid_increase_by;
+        if (sold_timer_duration !== undefined) auction.sold_timer_duration = sold_timer_duration;
+        if (min_squad_size !== undefined) auction.min_squad_size = min_squad_size;
+        if (max_squad_size !== undefined) auction.max_squad_size = max_squad_size;
         if (req.body.status) auction.status = req.body.status;
         if (imagePath) auction.image_path = imagePath;
 
@@ -121,7 +130,8 @@ exports.getAuctionById = async (req, res) => {
         if (!auction) return res.status(404).json({ message: 'Auction not found' });
         res.json(auction);
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching auction' });
+        console.error("Error fetching auction:", error);
+        res.status(500).json({ message: 'Error fetching auction', error: error.message });
     }
 };
 
