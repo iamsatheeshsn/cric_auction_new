@@ -3,15 +3,16 @@ import { useSocket } from '../context/SocketContext';
 import Layout from '../components/Layout';
 import Sidebar from '../components/Sidebar';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiCheckCircle, FiUser, FiArrowRight, FiSkipForward, FiMonitor, FiActivity, FiDollarSign, FiUsers, FiCpu, FiInfo, FiExternalLink, FiMenu, FiBookmark } from 'react-icons/fi';
+import { FiCheckCircle, FiUser, FiArrowRight, FiSkipForward, FiMonitor, FiActivity, FiDollarSign, FiUsers, FiCpu, FiInfo, FiExternalLink, FiMenu, FiBookmark, FiSettings, FiDownload, FiAlertTriangle, FiX } from 'react-icons/fi';
 import api from '../api/axios';
 import { getAuctionAdvice } from '../utils/AIModel';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import ConfirmationModal from '../components/ConfirmationModal';
 import PlayerInfoModal from '../components/PlayerInfoModal';
 import ChatBox from '../components/social/ChatBox';
 import { useAuth } from '../context/AuthContext';
+import { useCurrency } from '../context/CurrencyContext';
 
 // Enhanced Celebration Component
 const SoldCelebration = () => (
@@ -54,6 +55,7 @@ const FireAnimation = () => (
 
 const AuctionRoom = () => {
     const { auctionId } = useParams();
+    const { formatCurrency } = useCurrency();
     const navigate = useNavigate();
     const { socket } = useSocket();
 
@@ -399,6 +401,35 @@ const AuctionRoom = () => {
         }
     };
 
+    const [adminModalOpen, setAdminModalOpen] = useState(false);
+    const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+    const [isResetting, setIsResetting] = useState(false);
+
+    const handleResetClick = () => {
+        setResetConfirmOpen(true);
+    };
+
+    const confirmReset = async () => {
+        setIsResetting(true);
+        try {
+            await api.post(`/admin/reset/${auctionId}`);
+            toast.success("Auction Reset Successfully");
+            setResetConfirmOpen(false);
+            setAdminModalOpen(false);
+            navigate('/auctions');
+        } catch (error) {
+            console.error("Reset error:", error);
+            toast.error("Failed to reset auction");
+        } finally {
+            setIsResetting(false);
+        }
+    };
+
+    const handleExport = (type) => {
+        const url = `http://localhost:5000/api/admin/export-${type}/${auctionId}`;
+        window.open(url, '_blank');
+    };
+
     if (!auction) return <div className="h-screen flex items-center justify-center bg-slate-100 text-slate-500 font-bold">Loading Arena...</div>;
 
     const PlayerListModal = ({ title, players, onClose, colorClass }) => (
@@ -443,7 +474,7 @@ const AuctionRoom = () => {
                                         <h4 className="font-bold text-gray-800 text-lg truncate group-hover:text-blue-600 transition-colors">{p.name}</h4>
                                         <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{p.role}</p>
                                         {p.Team && <div className="inline-flex items-center gap-1 text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-md border border-green-100">Sold: {p.Team.short_name}</div>}
-                                        {p.sold_price > 0 && <span className="ml-2 text-xs text-gray-500">₹{p.sold_price.toLocaleString()}</span>}
+                                        {p.sold_price > 0 && <span className="ml-2 text-xs text-gray-500">{formatCurrency(p.sold_price)}</span>}
                                     </div>
                                 </div>
                             </motion.div>
@@ -486,7 +517,7 @@ const AuctionRoom = () => {
                                     <div className="flex gap-3">
                                         <div className="bg-black/20 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10">
                                             <p className="text-xs text-blue-200 font-bold uppercase tracking-wider">Remaining</p>
-                                            <p className="text-xl font-bold font-mono">₹{team.purse_remaining.toLocaleString()}</p>
+                                            <p className="text-xl font-bold font-mono">{formatCurrency(team.purse_remaining)}</p>
                                         </div>
                                         <div className="bg-black/20 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10">
                                             <p className="text-xs text-blue-200 font-bold uppercase tracking-wider">Squad</p>
@@ -518,7 +549,7 @@ const AuctionRoom = () => {
                                             <div className="font-bold text-gray-800 group-hover:text-blue-600 transition-colors">{p.name}</div>
                                             <div className="text-xs text-gray-500 font-medium mb-1">{p.role}</div>
                                             <div className="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full inline-block border border-green-100">
-                                                ₹{p.sold_price.toLocaleString()}
+                                                {formatCurrency(p.sold_price)}
                                             </div>
                                         </div>
                                     </div>
@@ -566,6 +597,9 @@ const AuctionRoom = () => {
                         <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200 shrink-0">
                             <FiActivity size={20} />
                         </div>
+                        <Link to="/auctions" className="hidden sm:flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 text-slate-600 transition-colors" title="Back to List">
+                            <FiArrowRight className="rotate-180" size={20} />
+                        </Link>
                         <div className="min-w-0 hidden sm:block">
                             <h2 className="text-lg font-black text-slate-800 tracking-tight leading-none mb-0.5 truncate">Auction Arena</h2>
                             <p className="text-xs font-medium text-slate-500 truncate">{auction?.name}</p>
@@ -606,6 +640,13 @@ const AuctionRoom = () => {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
+                        <button
+                            onClick={() => setAdminModalOpen(true)}
+                            className="bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-xl font-bold shadow-md shadow-gray-200 transition-all flex items-center gap-2 active:scale-95"
+                            title="Admin Tools"
+                        >
+                            <FiSettings /> <span className="hidden xl:inline">Admin</span>
+                        </button>
                         <a
                             href={`/strategy?auctionId=${auctionId}`}
                             target="_blank"
@@ -705,7 +746,7 @@ const AuctionRoom = () => {
                                                         <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2 relative z-10">Current Bid Amount</p>
                                                         <div className="flex items-baseline gap-4 relative z-10">
                                                             <p className="text-6xl 2xl:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-800 to-slate-600 tracking-tighter">
-                                                                ₹{(currentBid || 0).toLocaleString()}
+                                                                {formatCurrency(currentBid || 0)}
                                                             </p>
                                                         </div>
 
@@ -787,7 +828,7 @@ const AuctionRoom = () => {
                                                                         <div className="flex flex-col flex-1 min-w-0">
                                                                             <span className={`text-[10px] font-black truncate ${isCurrent ? 'text-green-700' : 'text-slate-700'}`}>{team.short_name}</span>
                                                                             <span className="text-[9px] font-bold text-slate-400">
-                                                                                {isFull ? <span className="text-red-500">FULL</span> : `₹${team.purse_remaining.toLocaleString()}`}
+                                                                                {isFull ? <span className="text-red-500">FULL</span> : formatCurrency(team.purse_remaining)}
                                                                             </span>
                                                                         </div>
 
@@ -853,7 +894,7 @@ const AuctionRoom = () => {
                                                                 : 'bg-gradient-to-r from-deep-blue to-blue-700 text-white hover:shadow-blue-200 hover:scale-[1.02]'
                                                                 }`}
                                                         >
-                                                            <FiArrowRight /> Bid +{auction?.bid_increase_by || 100}
+                                                            <FiArrowRight /> Bid +{formatCurrency(auction?.bid_increase_by || 100)}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -956,7 +997,7 @@ const AuctionRoom = () => {
                                                         <span className="text-xs text-indigo-200 font-bold uppercase">AI Bid Cap</span>
                                                         <FiInfo className="text-indigo-300 text-xs" />
                                                     </div>
-                                                    <span className="font-mono font-bold text-cyan-300">₹{advice?.suggestedBidLimit?.toLocaleString()}</span>
+                                                    <span className="font-mono font-bold text-cyan-300">{formatCurrency(advice?.suggestedBidLimit)}</span>
                                                 </div>
                                             </div>
                                         );
@@ -996,7 +1037,7 @@ const AuctionRoom = () => {
                                                         </h4>
                                                         <div className="flex flex-wrap items-center gap-1 text-[10px] font-bold text-slate-500 mt-1">
                                                             <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 shrink-0">{team.short_name}</span>
-                                                            <span className="text-slate-400">₹{team.purse_remaining.toLocaleString()}</span>
+                                                            <span className="text-slate-400">{formatCurrency(team.purse_remaining)}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1120,7 +1161,7 @@ const AuctionRoom = () => {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="bg-green-50 p-4 rounded-xl border border-green-100">
                                         <p className="text-xs font-bold uppercase text-green-600 mb-1">Purse Remaining</p>
-                                        <p className="text-2xl font-black text-slate-800">₹{selectedTeamViewer.purse_remaining.toLocaleString()}</p>
+                                        <p className="text-2xl font-black text-slate-800">{formatCurrency(selectedTeamViewer.purse_remaining)}</p>
                                     </div>
                                     <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
                                         <p className="text-xs font-bold uppercase text-blue-600 mb-1">Squad Size</p>
@@ -1145,7 +1186,7 @@ const AuctionRoom = () => {
                                                         <div className="font-bold text-slate-700 truncate">{p.name}</div>
                                                         <div className="text-xs text-slate-400">{p.role}</div>
                                                     </div>
-                                                    <div className="font-bold text-green-600">₹{p.sold_price?.toLocaleString()}</div>
+                                                    <div className="font-bold text-green-600">{formatCurrency(p.sold_price)}</div>
                                                 </div>
                                             ))
                                         )}
@@ -1169,6 +1210,129 @@ const AuctionRoom = () => {
                         setUnsoldPassedPlayers(prev => prev.map(p => p.id === infoPlayer.id ? { ...p, my_note: note } : p));
                     }}
                 />
+
+                {/* Admin Tools Modal */}
+                <AnimatePresence>
+                    {adminModalOpen && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden"
+                            >
+                                <div className="bg-gray-900 px-6 py-4 flex justify-between items-center">
+                                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                        <FiSettings /> Admin Tools
+                                    </h3>
+                                    <button onClick={() => setAdminModalOpen(false)} className="text-gray-400 hover:text-white">
+                                        <FiX className="text-xl" />
+                                    </button>
+                                </div>
+                                <div className="p-6 space-y-6">
+                                    <div>
+                                        <h4 className="text-sm font-bold text-gray-500 uppercase mb-3">Export Data</h4>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <button
+                                                onClick={() => handleExport('squads')}
+                                                className="flex flex-col items-center justify-center p-4 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors gap-2 group"
+                                            >
+                                                <FiDownload className="text-2xl text-blue-600 group-hover:scale-110 transition-transform" />
+                                                <span className="text-sm font-bold text-blue-900">Squad List (CSV)</span>
+                                            </button>
+                                            <button
+                                                onClick={() => handleExport('logs')}
+                                                className="flex flex-col items-center justify-center p-4 bg-purple-50 border border-purple-100 rounded-xl hover:bg-purple-100 transition-colors gap-2 group"
+                                            >
+                                                <FiActivity className="text-2xl text-purple-600 group-hover:scale-110 transition-transform" />
+                                                <span className="text-sm font-bold text-purple-900">Transaction Logs</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-6 border-t border-gray-100">
+                                        <h4 className="text-sm font-bold text-red-500 uppercase mb-3 flex items-center gap-2">
+                                            <FiAlertTriangle /> Danger Zone
+                                        </h4>
+                                        <div className="bg-red-50 border border-red-100 rounded-xl p-4">
+                                            <p className="text-xs text-red-800 mb-4">
+                                                This action will <strong>unsell all players</strong> and <strong>reset team purses</strong> to their original values. This cannot be undone.
+                                            </p>
+                                            <button
+                                                onClick={handleResetClick}
+                                                className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors shadow-red-200 shadow-lg active:scale-95"
+                                            >
+                                                Reset Auction Data
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
+
+                {/* Reset Confirmation Modal */}
+                <AnimatePresence>
+                    {resetConfirmOpen && (
+                        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden ring-4 ring-red-100"
+                            >
+                                <div className="bg-red-50 p-6 flex flex-col items-center text-center border-b border-red-100">
+                                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4 ring-4 ring-white shadow-sm">
+                                        <FiAlertTriangle className="text-3xl text-red-600 animate-pulse" />
+                                    </div>
+                                    <h3 className="text-xl font-black text-slate-800 mb-1">Reset Auction?</h3>
+                                    <p className="text-sm text-slate-500 font-medium">Are you absolutely sure?</p>
+                                </div>
+
+                                <div className="p-6">
+                                    <div className="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-100">
+                                        <ul className="space-y-2">
+                                            <li className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> All "Sold" players will become "Available"
+                                            </li>
+                                            <li className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> Team purses will be fully reset
+                                            </li>
+                                            <li className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> Bid history will be deleted
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => setResetConfirmOpen(false)}
+                                            className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors"
+                                            disabled={isResetting}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={confirmReset}
+                                            className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-200 transition-all flex items-center justify-center gap-2 active:scale-95"
+                                            disabled={isResetting}
+                                        >
+                                            {isResetting ? (
+                                                <>
+                                                    <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span> Resetting...
+                                                </>
+                                            ) : (
+                                                "Yes, Reset"
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>
+
             </div>
         </div >
     );

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useCurrency } from '../../context/CurrencyContext';
 
 const SpectatorLiveRoom = ({ auctionId }) => {
+    const { formatCurrency } = useCurrency();
     const [auction, setAuction] = useState(null);
     const [currentPlayer, setCurrentPlayer] = useState(null);
     const [currentBid, setCurrentBid] = useState(0);
@@ -72,7 +74,7 @@ const SpectatorLiveRoom = ({ auctionId }) => {
                             <div className="text-xs text-gray-400 mb-2">{lastSold.Team?.name}</div>
                             <div className="mt-auto w-full bg-green-500/10 border border-green-500/30 rounded-lg p-2">
                                 <div className="text-green-400 text-[10px] font-bold uppercase">Sold For</div>
-                                <div className="text-lg font-black text-white">₹{lastSold.sold_price?.toLocaleString()}</div>
+                                <div className="text-lg font-black text-white">{formatCurrency(lastSold.sold_price)}</div>
                             </div>
                         </div>
                     ) : (
@@ -104,7 +106,7 @@ const SpectatorLiveRoom = ({ auctionId }) => {
                                 {/* Mobile/Tablet Overlay Info */}
                                 <div className="absolute bottom-0 left-0 right-0 p-6 z-20 md:hidden block">
                                     <h2 className="text-3xl font-black text-white uppercase">{currentPlayer.name}</h2>
-                                    <div className="text-gold font-bold">Base Price: ₹{parseInt(auction?.min_bid || 0).toLocaleString()}</div>
+                                    <div className="text-gold font-bold">Base Price: {formatCurrency(parseInt(auction?.min_bid || 0))}</div>
                                 </div>
                             </div>
 
@@ -133,7 +135,7 @@ const SpectatorLiveRoom = ({ auctionId }) => {
                                 {/* Desktop Base Price */}
                                 <div className="hidden md:flex items-center gap-4 p-4 bg-white/5 border border-white/10 rounded-xl backdrop-blur-sm w-fit shrink-0">
                                     <div className="text-gray-400 text-xs font-bold uppercase tracking-widest">Base Price</div>
-                                    <div className="text-2xl lg:text-3xl font-mono font-bold text-white">₹{parseInt(auction?.min_bid || 0).toLocaleString()}</div>
+                                    <div className="text-2xl lg:text-3xl font-mono font-bold text-white">{formatCurrency(parseInt(auction?.min_bid || 0))}</div>
                                 </div>
 
                                 {/* Live Bid Card - Flex Grower */}
@@ -146,7 +148,7 @@ const SpectatorLiveRoom = ({ auctionId }) => {
                                     {/* Massive Bid - Uses viewport min unit to scale perfectly */}
                                     <div className="font-black text-white leading-none tracking-tighter tabular-nums drop-shadow-glow shrink-0"
                                         style={{ fontSize: 'clamp(3rem, 10vmin, 9rem)' }}>
-                                        ₹{currentBid.toLocaleString()}
+                                        {formatCurrency(currentBid || 0)}
                                     </div>
 
                                     {currentBidder ? (

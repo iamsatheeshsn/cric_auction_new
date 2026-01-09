@@ -6,6 +6,7 @@ import { FiPlus, FiCalendar, FiMapPin, FiActivity, FiX, FiInfo, FiEdit, FiTrash2
 import api from '../api/axios';
 import { toast } from 'react-toastify';
 import ConfirmationModal from '../components/ConfirmationModal';
+import { useCurrency } from '../context/CurrencyContext';
 
 const FormSection = ({ title, children }) => (
     <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
@@ -15,6 +16,7 @@ const FormSection = ({ title, children }) => (
 );
 
 const Auctions = () => {
+    const { formatCurrency } = useCurrency();
     const [auctions, setAuctions] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -314,7 +316,7 @@ const Auctions = () => {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs font-semibold bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100 w-full text-center truncate">
-                                            Pts: {auction.points_per_team}
+                                            {formatCurrency(auction.points_per_team)}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2">

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiPlus, FiUser, FiX, FiArrowLeft, FiTrash2, FiEdit, FiPrinter, FiRefreshCw, FiUpload, FiDownload, FiSearch, FiFilter, FiSmartphone, FiMoreVertical, FiStar } from 'react-icons/fi';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useCurrency } from '../context/CurrencyContext';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -66,6 +67,7 @@ const Players = () => {
     const [roleFilter, setRoleFilter] = useState('');
     const [watchlist, setWatchlist] = useState(new Set());
     const { user } = useAuth();
+    const { formatCurrency } = useCurrency();
     const [statusFilter, setStatusFilter] = useState('');
     const [previewImage, setPreviewImage] = useState(null);
 
@@ -528,7 +530,7 @@ const Players = () => {
                                         <div className="text-center border-l border-gray-100 pl-3">
                                             <p className="text-[9px] text-gray-400 uppercase font-bold tracking-wide">Price</p>
                                             <p className="font-bold text-xs text-gray-800">
-                                                {player.sold_price ? `₹${player.sold_price}` : (player.base_price ? `₹${player.base_price}` : '-')}
+                                                {player.sold_price ? formatCurrency(player.sold_price) : (player.base_price ? formatCurrency(player.base_price) : '-')}
                                             </p>
                                         </div>
                                     </div>

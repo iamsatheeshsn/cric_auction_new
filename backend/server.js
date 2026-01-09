@@ -52,6 +52,7 @@ app.use('/api/activity', require('./routes/activityRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/watchlist', require('./routes/watchlistRoutes'));
 app.use('/api/calendar', require('./routes/calendarRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
 
 app.get('/', (req, res) => {
     res.send('Cricket Auction API is running...');

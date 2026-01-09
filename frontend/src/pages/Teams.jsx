@@ -8,6 +8,7 @@ import { toast } from 'react-toastify';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useCurrency } from '../context/CurrencyContext';
 
 import PlayerInfoModal from '../components/PlayerInfoModal';
 import WalletModal from '../components/WalletModal';
@@ -21,6 +22,7 @@ const FormSection = ({ title, children }) => (
 
 const Teams = () => {
     const { auctionId } = useParams();
+    const { formatCurrency } = useCurrency();
     const [teams, setTeams] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -225,7 +227,7 @@ const Teams = () => {
 
             // -- Stats --
             doc.setFontSize(12);
-            doc.text(`Funds Remaining: ${viewSquad.purse_remaining?.toLocaleString()}`, 140, 20);
+            doc.text(`Funds Remaining: ${formatCurrency(viewSquad.purse_remaining)}`, 140, 20);
             doc.text(`Squad Size: ${viewSquad.Players?.length || 0}/${viewSquad.players_per_team}`, 140, 30);
 
             // -- Content Gap --
@@ -248,7 +250,7 @@ const Teams = () => {
                 index + 1,
                 p.name,
                 p.role,
-                p.sold_price?.toLocaleString()
+                formatCurrency(p.sold_price)
             ]);
 
             autoTable(doc, {
@@ -389,7 +391,7 @@ const Teams = () => {
 
                             <div className="mt-4 w-full grid grid-cols-2 gap-2 text-sm text-gray-600 border-t pt-4">
                                 <div className="text-center">
-                                    <p className="font-bold text-gray-800">{team.purse_remaining?.toLocaleString()}</p>
+                                    <p className="font-bold text-gray-800">{formatCurrency(team.purse_remaining)}</p>
                                     <p className="text-xs">Purse Rem.</p>
                                 </div>
                                 <div className="text-center">
@@ -478,7 +480,7 @@ const Teams = () => {
                                         <h2 className="text-3xl font-black">{viewSquad.name}</h2>
                                         <div className="flex gap-4 mt-2 justify-center md:justify-start items-center">
                                             <div className="bg-white/20 px-3 py-1 rounded text-sm font-bold">
-                                                Funds Left: ₹{viewSquad.purse_remaining?.toLocaleString()}
+                                                Funds Left: {formatCurrency(viewSquad.purse_remaining)}
                                             </div>
                                             <div className="bg-white/20 px-3 py-1 rounded text-sm font-bold">
                                                 Squad: {viewSquad.Players?.length || 0}/{viewSquad.players_per_team}
@@ -523,7 +525,7 @@ const Teams = () => {
                                                 </div>
                                                 <div className="mt-auto pt-3 border-t border-gray-50 flex justify-between items-center">
                                                     <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Sold For</span>
-                                                    <span className="font-bold text-green-600">₹{p.sold_price?.toLocaleString()}</span>
+                                                    <span className="font-bold text-green-600">{formatCurrency(p.sold_price)}</span>
                                                 </div>
                                             </div>
                                         ))}

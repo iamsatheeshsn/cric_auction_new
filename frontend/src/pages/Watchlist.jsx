@@ -6,9 +6,11 @@ import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useCurrency } from '../context/CurrencyContext';
 
 const Watchlist = () => {
     const { user } = useAuth();
+    const { formatCurrency } = useCurrency();
     const [players, setPlayers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -255,7 +257,7 @@ const Watchlist = () => {
                                                                             <span className="text-xs font-semibold text-gray-800">{auc.team || 'Unknown'}</span>
                                                                         </div>
                                                                         {auc.sold_price > 0 && (
-                                                                            <span className="text-xs font-mono font-bold text-emerald-600">₹{auc.sold_price.toLocaleString()}</span>
+                                                                            <span className="text-xs font-mono font-bold text-emerald-600">{formatCurrency(auc.sold_price)}</span>
                                                                         )}
                                                                     </div>
                                                                 )}

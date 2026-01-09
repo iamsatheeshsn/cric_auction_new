@@ -6,8 +6,10 @@ import { toast } from 'react-toastify';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiRefreshCw, FiArrowRight, FiCheck, FiX, FiFilter, FiSearch, FiDollarSign, FiRepeat, FiUser, FiCpu } from 'react-icons/fi';
 import SquadAnalysisModal from '../components/SquadAnalysisModal';
+import { useCurrency } from '../context/CurrencyContext';
 
 const TransferWindow = () => {
+    const { formatCurrency, currencyMode } = useCurrency();
     const { auctionId } = useParams();
     const [activeTab, setActiveTab] = useState('market'); // 'market', 'requests'
 
@@ -89,7 +91,7 @@ const TransferWindow = () => {
 
         // Check 1: Do I have enough funds?
         if (potentialBalance < 0) {
-            toast.error(`Insufficient funds! This trade results in a balance of ₹${potentialBalance.toLocaleString('en-IN')}`);
+            toast.error(`Insufficient funds! This trade results in a balance of ${formatCurrency(potentialBalance)}`);
             return;
         }
 
@@ -157,14 +159,7 @@ const TransferWindow = () => {
     const paginatedTrades = relevantTrades.slice((requestsPage - 1) * requestsPerPage, requestsPage * requestsPerPage);
 
 
-    // Format Currency
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            maximumSignificantDigits: 3
-        }).format(amount);
-    };
+    // Format Currency (Using Context)
 
     return (
         <Layout>
@@ -216,17 +211,17 @@ const TransferWindow = () => {
                                 <div className="flex items-center gap-6 bg-gray-900 text-white p-3 rounded-2xl shadow-xl shadow-gray-200">
                                     <div className="flex flex-col px-2">
                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Purse</span>
-                                        <span className="font-bold text-sm">₹{Number(auctionDetails.points_per_team).toLocaleString('en-IN')}</span>
+                                        <span className="font-bold text-sm">{formatCurrency(Number(auctionDetails.points_per_team))}</span>
                                     </div>
                                     <div className="w-px h-8 bg-gray-700"></div>
                                     <div className="flex flex-col px-2">
                                         <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">Spent</span>
-                                        <span className="font-bold text-sm">₹{(Number(auctionDetails.points_per_team) - Number(teams.find(t => t.id === myTeamId).purse_remaining)).toLocaleString('en-IN')}</span>
+                                        <span className="font-bold text-sm">{formatCurrency(Number(auctionDetails.points_per_team) - Number(teams.find(t => t.id === myTeamId).purse_remaining))}</span>
                                     </div>
                                     <div className="w-px h-8 bg-gray-700"></div>
                                     <div className="flex flex-col px-2">
                                         <span className="text-[10px] font-bold text-green-400 uppercase tracking-wider">Remaining</span>
-                                        <span className="font-black text-lg">₹{Number(teams.find(t => t.id === myTeamId).purse_remaining).toLocaleString('en-IN')}</span>
+                                        <span className="font-black text-lg">{formatCurrency(Number(teams.find(t => t.id === myTeamId).purse_remaining))}</span>
                                     </div>
                                 </div>
                             )}
@@ -366,7 +361,7 @@ const TransferWindow = () => {
                                                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">YOU GIVE</p>
                                                                     {Number(trade.offer_amount) > 0 && (
                                                                         <div className="mb-2 bg-green-50 px-2 py-1 rounded text-[10px] font-bold text-green-700 border border-green-200">
-                                                                            + ₹{trade.offer_amount}
+                                                                            + {formatCurrency(trade.offer_amount)}
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -530,7 +525,7 @@ const TransferWindow = () => {
                                             <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 mt-auto">
                                                 <div className="flex justify-between items-center mb-1">
                                                     <span className="text-[9px] font-bold text-gray-500 uppercase">Valuation</span>
-                                                    <span className="text-sm font-black text-gray-900">₹{selectedTargetPlayer?.sold_price}</span>
+                                                    <span className="text-sm font-black text-gray-900">{formatCurrency(selectedTargetPlayer?.sold_price)}</span>
                                                 </div>
                                                 <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
                                                     <div className="h-full bg-blue-500 w-3/4 opacity-50"></div>
@@ -560,7 +555,7 @@ const TransferWindow = () => {
                                                             <option value="">Select a player to swap...</option>
                                                             {myFullSquad.map(p => (
                                                                 <option key={p.id} value={p.id}>
-                                                                    {p.name} (Value: ₹{p.sold_price})
+                                                                    {p.name} (Value: {formatCurrency(p.sold_price)})
                                                                 </option>
                                                             ))}
                                                         </select>
@@ -576,27 +571,27 @@ const TransferWindow = () => {
                                                             </div>
                                                             <div className="flex justify-between items-center text-xs font-medium text-gray-600">
                                                                 <span>Current Balance</span>
-                                                                <span>₹{Number(teams.find(t => t.id === myTeamId)?.purse_remaining || 0).toLocaleString('en-IN')}</span>
+                                                                <span>{formatCurrency(Number(teams.find(t => t.id === myTeamId)?.purse_remaining || 0))}</span>
                                                             </div>
                                                             <div className="flex justify-between items-center text-xs font-medium text-green-600">
                                                                 <span>+ Returns ({selectedMyPlayer.name})</span>
-                                                                <span>+ ₹{Number(selectedMyPlayer.sold_price).toLocaleString('en-IN')}</span>
+                                                                <span>+ {formatCurrency(Number(selectedMyPlayer.sold_price))}</span>
                                                             </div>
                                                             <div className="flex justify-between items-center text-xs font-medium text-red-600">
                                                                 <span>- Cost ({selectedTargetPlayer?.name})</span>
-                                                                <span>- ₹{Number(selectedTargetPlayer?.sold_price || 0).toLocaleString('en-IN')}</span>
+                                                                <span>- {formatCurrency(Number(selectedTargetPlayer?.sold_price || 0))}</span>
                                                             </div>
                                                             {Number(offerAmount) > 0 && (
                                                                 <div className="flex justify-between items-center text-xs font-medium text-red-600">
                                                                     <span>- Cash Offer</span>
-                                                                    <span>- ₹{Number(offerAmount).toLocaleString('en-IN')}</span>
+                                                                    <span>- {formatCurrency(Number(offerAmount))}</span>
                                                                 </div>
                                                             )}
                                                             <div className="border-t border-gray-200 my-0.5"></div>
                                                             <div className="flex justify-between items-center font-black text-gray-900 text-xs">
                                                                 <span>New Balance</span>
                                                                 <span className={`${(Number(teams.find(t => t.id === myTeamId)?.purse_remaining || 0) + Number(selectedMyPlayer.sold_price) - Number(selectedTargetPlayer?.sold_price || 0) - Number(offerAmount || 0)) < 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                                                                    ₹{(Number(teams.find(t => t.id === myTeamId)?.purse_remaining || 0) + Number(selectedMyPlayer.sold_price) - Number(selectedTargetPlayer?.sold_price || 0) - Number(offerAmount || 0)).toLocaleString('en-IN')}
+                                                                    {formatCurrency((Number(teams.find(t => t.id === myTeamId)?.purse_remaining || 0) + Number(selectedMyPlayer.sold_price) - Number(selectedTargetPlayer?.sold_price || 0) - Number(offerAmount || 0)))}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -605,14 +600,14 @@ const TransferWindow = () => {
                                                     {/* Cash Adjustment */}
                                                     <div>
                                                         <div className="flex justify-between items-center mb-1.5">
-                                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Extra Cash Offer (₹)</label>
+                                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Extra Cash Offer ({currencyMode === 'Points' ? 'Pts' : '₹'})</label>
                                                             <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
-                                                                Budget Cap: ₹{(Number(teams.find(t => t.id === myTeamId)?.purse_remaining || 0) + Number(selectedMyPlayer?.sold_price || 0)).toLocaleString('en-IN')}
+                                                                Budget Cap: {formatCurrency((Number(teams.find(t => t.id === myTeamId)?.purse_remaining || 0) + Number(selectedMyPlayer?.sold_price || 0)))}
                                                             </span>
                                                         </div>
                                                         <div className="relative group">
                                                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                                <span className="text-gray-400 font-bold text-sm">₹</span>
+                                                                <span className="text-gray-400 font-bold text-sm">{currencyMode === 'Points' ? 'Pts' : '₹'}</span>
                                                             </div>
                                                             <input
                                                                 type="number"

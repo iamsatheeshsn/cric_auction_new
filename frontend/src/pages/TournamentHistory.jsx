@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FiStar, FiTrendingUp, FiAward, FiClock, FiTarget } from 'react-icons/fi';
 import HistoryCard from '../components/HistoryCard';
+import { useCurrency } from '../context/CurrencyContext';
 
 const TournamentHistory = () => {
+    const { formatCurrency } = useCurrency();
     const [activeTab, setActiveTab] = useState('tournaments');
     const [tournaments, setTournaments] = useState([]);
     const [hallOfFame, setHallOfFame] = useState(null);
@@ -173,7 +175,7 @@ const TournamentHistory = () => {
                                     <StatCard
                                         title="Most Expensive Signing"
                                         player={hallOfFame.mostExpensive?.player}
-                                        value={`₹${hallOfFame.mostExpensive?.price}`}
+                                        value={formatCurrency(hallOfFame.mostExpensive?.price)}
                                         subtext={hallOfFame.mostExpensive?.auction?.name} // Pass simple string
                                         color="yellow"
                                         icon={<FiTrendingUp />}

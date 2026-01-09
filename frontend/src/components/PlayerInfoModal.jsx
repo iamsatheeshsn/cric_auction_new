@@ -3,9 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiUser, FiCalendar, FiPhone, FiInfo, FiActivity, FiDollarSign, FiSave, FiEdit3 } from 'react-icons/fi';
 import api from '../api/axios';
 import { toast } from 'react-toastify';
+import { useCurrency } from '../context/CurrencyContext';
 
 const PlayerInfoModal = ({ player, isOpen, onClose, onNoteSave }) => {
     if (!isOpen || !player) return null;
+
+    const { formatCurrency } = useCurrency();
 
     const [myNote, setMyNote] = useState('');
     const [isSaving, setIsSaving] = useState(false);
@@ -161,7 +164,7 @@ const PlayerInfoModal = ({ player, isOpen, onClose, onNoteSave }) => {
                                             <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center text-green-600"><FiDollarSign size={14} /></div>
                                             <div>
                                                 <p className="text-xs text-gray-500">Sold Price</p>
-                                                <p className="text-sm font-bold text-green-700">₹{(player.sold_price || 0).toLocaleString()}</p>
+                                                <p className="text-sm font-bold text-green-700">{formatCurrency(player.sold_price || 0)}</p>
                                             </div>
                                         </div>
                                     )}

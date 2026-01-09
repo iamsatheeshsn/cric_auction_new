@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import api from '../api/axios';
 import { FiX } from 'react-icons/fi';
+import { useCurrency } from '../context/CurrencyContext';
 
 const Ticker = ({ onClose }) => {
+    const { formatCurrency } = useCurrency();
     const [sales, setSales] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -39,7 +41,7 @@ const Ticker = ({ onClose }) => {
                         <span className="font-semibold text-blue-400">{sale.teamName}</span>
                         <span className="text-xs text-slate-400">for</span>
                         {/* Assuming formatted */}
-                        <span className="text-green-400 font-bold">₹{sale.price.toLocaleString()}</span>
+                        <span className="text-green-400 font-bold">{formatCurrency(sale.price)}</span>
                         <span className="text-xs text-slate-500">({sale.auctionName})</span>
                         <span className="text-slate-600">•</span>
                     </span>

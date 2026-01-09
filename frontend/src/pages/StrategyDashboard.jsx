@@ -3,8 +3,10 @@ import Layout from '../components/Layout';
 import api from '../api/axios';
 import { FiUsers, FiTarget, FiPlus, FiTrash2, FiActivity, FiDollarSign, FiSearch, FiMonitor } from 'react-icons/fi';
 import { toast } from 'react-toastify';
+import { useCurrency } from '../context/CurrencyContext';
 
 const StrategyDashboard = () => {
+    const { formatCurrency } = useCurrency();
     const [teams, setTeams] = useState([]);
     const [selectedTeam, setSelectedTeam] = useState(null);
     const [shortlist, setShortlist] = useState([]);
@@ -173,7 +175,7 @@ const StrategyDashboard = () => {
                                         <div className="space-y-4">
                                             <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 text-white shadow-lg shadow-emerald-200">
                                                 <p className="text-emerald-100 text-xs font-bold uppercase tracking-wider mb-1">Total Purse Remaining</p>
-                                                <p className="text-3xl font-black">₹{selectedTeam.purse_remaining.toLocaleString()}</p>
+                                                <p className="text-3xl font-black">{formatCurrency(selectedTeam.purse_remaining)}</p>
                                             </div>
 
                                             <div className="grid grid-cols-2 gap-4">
@@ -304,14 +306,14 @@ const StrategyDashboard = () => {
                                                                 <span className="text-[10px] font-black uppercase text-indigo-400 tracking-widest mb-0.5 flex items-center gap-1">
                                                                     <FiDollarSign size={12} /> Max Safe Bid
                                                                 </span>
-                                                                <span className="font-black text-2xl text-indigo-700 font-mono tracking-tight">₹{maxBid.toLocaleString()}</span>
+                                                                <span className="font-black text-2xl text-indigo-700 font-mono tracking-tight">{formatCurrency(maxBid)}</span>
                                                             </div>
                                                         )}
 
                                                         {item.auctionStatus === 'Sold' && (
                                                             <div className="bg-gray-50 px-5 py-2.5 rounded-2xl border border-gray-100 flex flex-col items-center min-w-[140px]">
                                                                 <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-0.5">Sold For</span>
-                                                                <span className="font-black text-2xl text-gray-600 font-mono tracking-tight">₹{item.soldPrice?.toLocaleString() || 0}</span>
+                                                                <span className="font-black text-2xl text-gray-600 font-mono tracking-tight">{formatCurrency(item.soldPrice || 0)}</span>
                                                             </div>
                                                         )}
 

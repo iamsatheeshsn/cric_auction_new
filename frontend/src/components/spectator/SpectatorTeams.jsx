@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { FiUsers, FiX } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useCurrency } from '../../context/CurrencyContext';
 
 const SpectatorTeams = ({ auctionId }) => {
+    const { formatCurrency } = useCurrency();
     const [teams, setTeams] = useState([]);
     const [selectedTeam, setSelectedTeam] = useState(null);
 
@@ -84,7 +86,7 @@ const SpectatorTeams = ({ auctionId }) => {
                                         <div>
                                             <h4 className="text-white font-bold">{player.name}</h4>
                                             <p className="text-xs text-gray-400 uppercase tracking-wider">{player.role}</p>
-                                            <div className="text-gold font-mono text-sm font-bold mt-1">₹{player.sold_price?.toLocaleString()}</div>
+                                            <div className="text-gold font-mono text-sm font-bold mt-1">{formatCurrency(player.sold_price)}</div>
                                         </div>
                                     </div>
                                 )) : (

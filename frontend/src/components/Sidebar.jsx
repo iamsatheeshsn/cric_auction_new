@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FiHome, FiGrid, FiUsers, FiLogOut, FiSettings, FiActivity, FiPieChart, FiAward, FiSun, FiMoon, FiChevronDown, FiChevronUp, FiLock, FiX, FiList, FiTarget, FiStar, FiCalendar } from 'react-icons/fi';
+import { FiHome, FiGrid, FiUsers, FiLogOut, FiSettings, FiActivity, FiPieChart, FiAward, FiSun, FiMoon, FiChevronDown, FiChevronUp, FiLock, FiX, FiList, FiTarget, FiStar, FiCalendar, FiDollarSign } from 'react-icons/fi';
 import { FaTools } from 'react-icons/fa';
 import { useTheme } from '../context/ThemeContext';
+import { useCurrency } from '../context/CurrencyContext';
 import Logo from './Logo';
 
 const Sidebar = ({ isOpen, onClose, showTicker, toggleTicker }) => {
     const location = useLocation();
     const navigate = useNavigate();
     const { theme, toggleTheme } = useTheme();
+    const { currencyMode, setCurrencyMode } = useCurrency();
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     const [openGroups, setOpenGroups] = useState({
@@ -120,7 +122,8 @@ const Sidebar = ({ isOpen, onClose, showTicker, toggleTicker }) => {
                             );
                         } else if (item.type === 'group') {
                             const isOpenGroup = openGroups[item.id];
-                            const isActiveGroup = item.items.some(sub => location.pathname.startsWith(sub.path));
+                            const isActiveGroup = item.items.some(sub => location.pathname.startsWith(sub.path)) ||
+                                (item.id === 'auction' && location.pathname.includes('/auction-room'));
 
                             return (
                                 <div key={item.id} className="space-y-1">
@@ -138,7 +141,8 @@ const Sidebar = ({ isOpen, onClose, showTicker, toggleTicker }) => {
                                     {isOpenGroup && (
                                         <div className="pl-12 space-y-1">
                                             {item.items.map(sub => {
-                                                const isActive = location.pathname.startsWith(sub.path);
+                                                const isActive = location.pathname.startsWith(sub.path) ||
+                                                    (sub.path === '/auctions' && location.pathname.includes('/auction-room'));
                                                 return (
                                                     <Link
                                                         key={sub.path}
@@ -190,7 +194,19 @@ const Sidebar = ({ isOpen, onClose, showTicker, toggleTicker }) => {
                                     className="flex items-center gap-4 w-full px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all"
                                 >
                                     {theme === 'dark' ? <FiSun className="text-lg text-yellow-400" /> : <FiMoon className="text-lg" />}
-                                    <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+                                    <span>{theme === 'dark' ? 'Light Mode' : 'Stadium Mode'}</span>
+                                </button>
+
+                                <button
+                                    onClick={() => {
+                                        const modes = ['INR', 'Standard', 'Points'];
+                                        const nextIndex = (modes.indexOf(currencyMode) + 1) % modes.length;
+                                        setCurrencyMode(modes[nextIndex]);
+                                    }}
+                                    className="flex items-center gap-4 w-full px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+                                >
+                                    <FiDollarSign className="text-lg text-green-400" />
+                                    <span>Currency: {currencyMode}</span>
                                 </button>
                                 <button
                                     onClick={toggleTicker}

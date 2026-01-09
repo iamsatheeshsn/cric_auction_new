@@ -536,7 +536,7 @@ exports.markSold = async (req, res) => {
     try {
         const { id } = req.params; // Global Player ID
         const { team_id, sod_price } = req.body; // sod_price = final bid amount
-        const { AuctionPlayer, Player, Team, Auction } = require('../models');
+        const { AuctionPlayer, Player, Team, Auction, ActivityLog } = require('../models');
 
         const team = await Team.findByPk(team_id, {
             include: [{ model: Auction }]
@@ -549,7 +549,8 @@ exports.markSold = async (req, res) => {
 
         // Find AuctionPlayer for this player and this team's auction
         const auctionPlayer = await AuctionPlayer.findOne({
-            where: { player_id: id, auction_id: team.auction_id }
+            where: { player_id: id, auction_id: team.auction_id },
+            include: [{ model: Player }]
         });
 
         if (!auctionPlayer) {
