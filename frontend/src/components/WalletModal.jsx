@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiPieChart, FiList, FiDollarSign } from 'react-icons/fi';
 import api from '../api/axios';
 import { toast } from 'react-toastify';
+import { useCurrency } from '../context/CurrencyContext';
 
 const WalletModal = ({ teamId, isOpen, onClose }) => {
+    const { formatCurrency } = useCurrency();
     const [activeTab, setActiveTab] = useState('overview');
     const [walletData, setWalletData] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -79,15 +81,15 @@ const WalletModal = ({ teamId, isOpen, onClose }) => {
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
                                             <p className="text-xs font-bold text-gray-400 uppercase">Total Budget</p>
-                                            <p className="text-lg font-black text-gray-800">₹{walletData.summary.total_budget?.toLocaleString()}</p>
+                                            <p className="text-lg font-black text-gray-800">{formatCurrency(walletData.summary.total_budget)}</p>
                                         </div>
                                         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
                                             <p className="text-xs font-bold text-red-500 uppercase">Spent</p>
-                                            <p className="text-lg font-black text-red-600">₹{walletData.summary.total_spent?.toLocaleString()}</p>
+                                            <p className="text-lg font-black text-red-600">{formatCurrency(walletData.summary.total_spent)}</p>
                                         </div>
                                         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
                                             <p className="text-xs font-bold text-green-500 uppercase">Remaining</p>
-                                            <p className="text-lg font-black text-green-600">₹{walletData.summary.remaining?.toLocaleString()}</p>
+                                            <p className="text-lg font-black text-green-600">{formatCurrency(walletData.summary.remaining)}</p>
                                         </div>
                                     </div>
 
@@ -102,7 +104,7 @@ const WalletModal = ({ teamId, isOpen, onClose }) => {
                                                     <div key={role}>
                                                         <div className="flex justify-between text-sm mb-1">
                                                             <span className="font-medium text-gray-600">{role}</span>
-                                                            <span className="font-bold text-gray-800">₹{amount.toLocaleString()} ({Math.round(percent)}%)</span>
+                                                            <span className="font-bold text-gray-800">{formatCurrency(amount)} ({Math.round(percent)}%)</span>
                                                         </div>
                                                         <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                                                             <div className="bg-deep-blue h-full rounded-full" style={{ width: `${percent}%` }}></div>
@@ -127,7 +129,7 @@ const WalletModal = ({ teamId, isOpen, onClose }) => {
                                                     <p className="text-xs text-gray-500">{tx.role} • {new Date(tx.time).toLocaleString()}</p>
                                                 </div>
                                                 <div className="font-bold text-red-600">
-                                                    - ₹{tx.amount?.toLocaleString()}
+                                                    - {formatCurrency(tx.amount)}
                                                 </div>
                                             </div>
                                         ))
