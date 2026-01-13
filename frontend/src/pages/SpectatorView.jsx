@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api/axios';
@@ -6,11 +7,13 @@ import SpectatorLiveRoom from '../components/spectator/SpectatorLiveRoom';
 import SpectatorMatches from '../components/spectator/SpectatorMatches';
 import SpectatorStandings from '../components/spectator/SpectatorStandings';
 import SpectatorTeams from '../components/spectator/SpectatorTeams';
+import { useSponsors } from '../context/SponsorContext';
 
 const SpectatorView = () => {
     const { auctionId } = useParams();
     const [activeTab, setActiveTab] = useState('live'); // live, matches, standings, teams
     const [auction, setAuction] = useState(null);
+    const { sponsors } = useSponsors();
 
     useEffect(() => {
         const fetchAuction = async () => {
@@ -49,15 +52,14 @@ const SpectatorView = () => {
                     <span className="hidden md:inline px-3 py-1 bg-white/10 rounded-full text-xs font-bold uppercase tracking-wider text-gray-400">Public Portal</span>
                 </div>
 
-                {/* Mobile Nav Toggle could go here, but using horizontal scroll for now */}
                 <nav className="flex gap-2 lg:gap-4 overflow-x-auto no-scrollbar">
                     {navItems.map(item => (
                         <button
                             key={item.id}
                             onClick={() => setActiveTab(item.id)}
                             className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${activeTab === item.id
-                                    ? 'bg-gold text-black shadow-lg shadow-gold/20'
-                                    : 'bg-transparent text-gray-400 hover:text-white hover:bg-white/5'
+                                ? 'bg-gold text-black shadow-lg shadow-gold/20'
+                                : 'bg-transparent text-gray-400 hover:text-white hover:bg-white/5'
                                 }`}
                         >
                             {item.icon}
@@ -75,6 +77,32 @@ const SpectatorView = () => {
                 {activeTab === 'teams' && <SpectatorTeams auctionId={auctionId} />}
             </main>
 
+            {/* Sponsor Ticker */}
+            {sponsors && sponsors.length > 0 && (
+                <footer className="relative z-20 bg-white h-20 shrink-0 flex items-center overflow-hidden border-t-4 border-gold">
+                    <div className="flex items-center animate-scroll whitespace-nowrap px-4">
+                        {/* Duplicate lists for seamless scrolling */}
+                        {[...sponsors, ...sponsors, ...sponsors, ...sponsors].map((sponsor, idx) => (
+                            <div key={`${sponsor.id}-${idx}`} className="inline-flex items-center justify-center mx-8 h-14 w-40 grayscale opacity-80 hover:grayscale-0 hover:opacity-100 transition-all duration-300">
+                                <img src={sponsor.logoUrl} alt={sponsor.name} className="max-h-full max-w-full object-contain" />
+                            </div>
+                        ))}
+                    </div>
+                </footer>
+            )}
+
+            <style>{`
+                @keyframes scroll {
+                    0% { transform: translateX(0); }
+                    100% { transform: translateX(-50%); }
+                }
+                .animate-scroll {
+                    animation: scroll 30s linear infinite;
+                }
+                .animate-scroll:hover {
+                    animation-play-state: paused;
+                }
+            `}</style>
         </div>
     );
 };

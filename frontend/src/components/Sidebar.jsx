@@ -1,20 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FiHome, FiGrid, FiUsers, FiLogOut, FiSettings, FiActivity, FiPieChart, FiAward, FiSun, FiMoon, FiChevronDown, FiChevronUp, FiLock, FiX, FiList, FiTarget, FiStar, FiCalendar, FiDollarSign } from 'react-icons/fi';
 import { FaTools } from 'react-icons/fa';
 import { useTheme } from '../context/ThemeContext';
 import { useCurrency } from '../context/CurrencyContext';
 import Logo from './Logo';
+import { MENU_ITEMS, ALL_ROLES } from '../config/menuItems';
+import { useAuth } from '../context/AuthContext';
+import { getVisibleMenuItems } from '../utils/permissionHelpers';
 
 const Sidebar = ({ isOpen, onClose, showTicker, toggleTicker }) => {
     const location = useLocation();
     const navigate = useNavigate();
     const { theme, toggleTheme } = useTheme();
     const { currencyMode, setCurrencyMode } = useCurrency();
+    const { user, logout, permissions } = useAuth(); // Get permissions
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     const [openGroups, setOpenGroups] = useState({
-        main: true, // Default open
+        main: false,
         auction: false,
         analysis: false,
         data: false,
@@ -25,64 +29,38 @@ const Sidebar = ({ isOpen, onClose, showTicker, toggleTicker }) => {
         setOpenGroups(prev => ({ ...prev, [group]: !prev[group] }));
     };
 
-    const menuGroups = [
-        {
-            type: 'group',
-            id: 'main',
-            label: 'Main',
-            icon: <FiHome />,
-            items: [
-                { path: '/dashboard', label: 'Dashboard', icon: <FiHome /> },
-                { path: '/calendar', label: 'Calendar', icon: <FiCalendar />, newTab: true },
-                { path: '/fanzone', label: 'Fan Zone', icon: <FiTarget /> },
-            ]
-        },
-        {
-            type: 'group',
-            id: 'auction',
-            label: 'Auction Center',
-            icon: <FiGrid />,
-            items: [
-                { path: '/auctions', label: 'Auctions', icon: <FiGrid /> },
-                { path: '/players', label: 'Players', icon: <FiUsers /> },
-                { path: '/watchlist', label: 'My Watchlist', icon: <FiStar /> },
-            ]
-        },
-        {
-            type: 'group',
-            id: 'data',
-            label: 'Tournament Data',
-            icon: <FiAward />,
-            items: [
-                { path: '/points', label: 'Points Table', icon: <FiList /> },
-                { path: '/history', label: 'Hall of Fame', icon: <FiAward />, newTab: true },
-            ]
-        },
-        {
-            type: 'group',
-            id: 'analysis',
-            label: 'Analysis Center',
-            icon: <FiPieChart />,
-            items: [
-                { path: '/stats', label: 'Stats Hub', icon: <FiActivity /> },
-                { path: '/analytics', label: 'Analytics', icon: <FiPieChart /> },
-                { path: '/compare', label: 'Play Comparison', icon: <FiUsers /> },
-            ]
-        },
-        {
-            type: 'group',
-            id: 'utilities',
-            label: 'Utilities',
-            icon: <FaTools />,
-            items: [
-                { path: '/tools', label: 'DLS Calculator', icon: <FaTools /> }
-            ]
+    // Calculate user role for admin check
+    const userRole = (user?.role || 'SPECTATOR').toUpperCase();
+    const currentRole = ALL_ROLES.includes(userRole) ? userRole : 'SPECTATOR';
+
+    const visibleGroups = getVisibleMenuItems(user, permissions);
+
+    useEffect(() => {
+        const activeGroup = MENU_ITEMS.find(group =>
+            group.items.some(item =>
+                location.pathname.startsWith(item.path) ||
+                (item.path === '/auctions' && location.pathname.includes('/auction-room'))
+            )
+        );
+
+        if (activeGroup) {
+            setOpenGroups(prev => ({
+                ...prev,
+                [activeGroup.id]: true
+            }));
         }
-    ];
+
+        // Auto-open Settings for relevant paths
+        const settingsPaths = ['/settings', '/social-tools', '/admin/permissions', '/admin/sponsors'];
+        if (settingsPaths.some(path => location.pathname.startsWith(path))) {
+            setIsSettingsOpen(true);
+        }
+    }, [location.pathname]);
+
+
 
     const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        logout(); // Use context logout
         navigate('/');
     };
 
@@ -109,59 +87,48 @@ const Sidebar = ({ isOpen, onClose, showTicker, toggleTicker }) => {
                 </div>
 
                 <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
-                    {menuGroups.map((item, index) => {
-                        if (item.type === 'link') {
-                            const isActive = location.pathname.startsWith(item.path);
-                            return (
-                                <Link key={item.path} to={item.path} onClick={() => onClose && onClose()}>
-                                    <div className={`flex items-center gap-4 px-4 py-3 rounded-lg transition-all duration-200 ${isActive ? 'bg-white/10 text-gold border-r-4 border-gold' : 'hover:bg-white/5 text-gray-300 hover:text-white'}`}>
-                                        <span className="text-xl">{item.icon}</span>
-                                        <span className="font-medium">{item.label}</span>
+                    {visibleGroups.map((group) => {
+                        const isOpenGroup = openGroups[group.id];
+                        // Check active based on sub items
+                        const isActiveGroup = group.items.some(sub => location.pathname.startsWith(sub.path)) ||
+                            (group.id === 'auction' && location.pathname.includes('/auction-room'));
+
+                        return (
+                            <div key={group.id} className="space-y-1">
+                                <button
+                                    onClick={() => toggleGroup(group.id)}
+                                    className={`flex items-center justify-between w-full px-4 py-3 rounded-lg transition-all ${isActiveGroup || isOpenGroup ? 'text-white bg-white/5' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-xl"><group.icon /></span>
+                                        <span className="font-medium">{group.label}</span>
                                     </div>
-                                </Link>
-                            );
-                        } else if (item.type === 'group') {
-                            const isOpenGroup = openGroups[item.id];
-                            const isActiveGroup = item.items.some(sub => location.pathname.startsWith(sub.path)) ||
-                                (item.id === 'auction' && location.pathname.includes('/auction-room'));
+                                    {isOpenGroup ? <FiChevronUp /> : <FiChevronDown />}
+                                </button>
 
-                            return (
-                                <div key={item.id} className="space-y-1">
-                                    <button
-                                        onClick={() => toggleGroup(item.id)}
-                                        className={`flex items-center justify-between w-full px-4 py-3 rounded-lg transition-all ${isActiveGroup || isOpenGroup ? 'text-white bg-white/5' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}
-                                    >
-                                        <div className="flex items-center gap-4">
-                                            <span className="text-xl">{item.icon}</span>
-                                            <span className="font-medium">{item.label}</span>
-                                        </div>
-                                        {isOpenGroup ? <FiChevronUp /> : <FiChevronDown />}
-                                    </button>
-
-                                    {isOpenGroup && (
-                                        <div className="pl-12 space-y-1">
-                                            {item.items.map(sub => {
-                                                const isActive = location.pathname.startsWith(sub.path) ||
-                                                    (sub.path === '/auctions' && location.pathname.includes('/auction-room'));
-                                                return (
-                                                    <Link
-                                                        key={sub.path}
-                                                        to={sub.path}
-                                                        onClick={() => onClose && onClose()}
-                                                        target={sub.newTab ? "_blank" : undefined}
-                                                        rel={sub.newTab ? "noopener noreferrer" : undefined}
-                                                    >
-                                                        <div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all ${isActive ? 'text-gold font-bold' : 'text-gray-400 hover:text-white'}`}>
-                                                            <span>{sub.label}</span>
-                                                        </div>
-                                                    </Link>
-                                                )
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        }
+                                {isOpenGroup && (
+                                    <div className="pl-12 space-y-1">
+                                        {group.items.map(sub => {
+                                            const isActive = location.pathname.startsWith(sub.path) ||
+                                                (sub.path === '/auctions' && location.pathname.includes('/auction-room'));
+                                            return (
+                                                <Link
+                                                    key={sub.id}
+                                                    to={sub.path}
+                                                    onClick={() => onClose && onClose()}
+                                                    target={sub.newTab ? "_blank" : undefined}
+                                                    rel={sub.newTab ? "noopener noreferrer" : undefined}
+                                                >
+                                                    <div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all ${isActive ? 'text-gold font-bold' : 'text-gray-400 hover:text-white'}`}>
+                                                        <span>{sub.label}</span>
+                                                    </div>
+                                                </Link>
+                                            )
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        );
                     })}
                 </nav>
 
@@ -181,11 +148,11 @@ const Sidebar = ({ isOpen, onClose, showTicker, toggleTicker }) => {
 
                         {isSettingsOpen && (
                             <div className="mt-2 space-y-1 pl-4">
-                                <Link to="/settings" onClick={() => onClose && onClose()} className="flex items-center gap-4 w-full px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">
+                                <Link to="/settings" onClick={() => onClose && onClose()} className={`flex items-center gap-4 w-full px-4 py-2.5 text-sm rounded-lg transition-all ${location.pathname === '/settings' ? 'text-gold font-bold' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
                                     <FiLock className="text-lg" />
                                     <span>Change Password</span>
                                 </Link>
-                                <Link to="/social-tools" onClick={() => onClose && onClose()} className="flex items-center gap-4 w-full px-4 py-2.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">
+                                <Link to="/social-tools" onClick={() => onClose && onClose()} className={`flex items-center gap-4 w-full px-4 py-2.5 text-sm rounded-lg transition-all ${location.pathname === '/social-tools' ? 'text-gold font-bold' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
                                     <FiSettings className="text-lg" />
                                     <span>Social Studio</span>
                                 </Link>
@@ -215,6 +182,19 @@ const Sidebar = ({ isOpen, onClose, showTicker, toggleTicker }) => {
                                     <FiActivity className={`text-lg transition-colors ${showTicker ? 'text-green-400' : 'text-gray-500'}`} />
                                     <span>{showTicker ? 'Hide Live Ticker' : 'Show Live Ticker'}</span>
                                 </button>
+
+                                {currentRole === 'ADMIN' && (
+                                    <>
+                                        <Link to="/admin/sponsors" onClick={() => onClose && onClose()} className={`flex items-center gap-4 w-full px-4 py-2.5 text-sm rounded-lg transition-all ${location.pathname === '/admin/sponsors' ? 'text-gold font-bold' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                                            <FiAward className="text-lg" />
+                                            <span>Sponsor Logos</span>
+                                        </Link>
+                                        <Link to="/admin/permissions" onClick={() => onClose && onClose()} className={`flex items-center gap-4 w-full px-4 py-2.5 text-sm rounded-lg transition-all ${location.pathname === '/admin/permissions' ? 'text-gold font-bold' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                                            <FiLock className="text-lg" />
+                                            <span>Menu Permissions</span>
+                                        </Link>
+                                    </>
+                                )}
                             </div>
                         )}
                     </div>

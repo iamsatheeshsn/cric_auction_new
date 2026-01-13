@@ -10,7 +10,7 @@
 // Simplified for T20 (20 overs max)
 // Values represented as Percentage. 
 // Source: Standard DLS Table for 20 overs.
-const RESOURCE_TABLE_T20 = {
+export const RESOURCE_TABLE_T20 = {
     20: [100.0, 93.4, 85.1, 74.9, 62.7, 49.0, 34.9, 22.0, 11.9, 4.7],
     19: [96.1, 90.2, 82.7, 73.2, 61.6, 48.4, 34.6, 21.9, 11.9, 4.7],
     18: [92.2, 86.9, 80.1, 71.3, 60.5, 47.7, 34.3, 21.8, 11.9, 4.7],
